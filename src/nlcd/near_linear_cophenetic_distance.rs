@@ -292,7 +292,7 @@ where
                         // find omega_x
                         let omega_x = t1.node_to_root(x_node_id_t).into_iter()
                             .filter(|w| w.get_zeta().unwrap()<=beta)
-                            .inspect(|x| {dbg!(x, x.get_zeta());})
+                            // .inspect(|x| {dbg!(x, x.get_zeta());})
                             .min_by(|w, y| {
                                 w.get_zeta().unwrap().partial_cmp(&y.get_zeta().unwrap()).unwrap()
                             }).unwrap();
