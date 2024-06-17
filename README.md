@@ -8,7 +8,7 @@ To install you must first have cargo and rustup installed:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-After installing the above command you can run the following to install seq_class:
+After installing the above command you can run the following to install nlcd:
 ```bash
 cargo install --git=https://github.com/sriram98v/near-linear-cophenetic-distance
 ```
