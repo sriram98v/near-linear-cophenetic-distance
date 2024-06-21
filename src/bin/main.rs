@@ -1,19 +1,10 @@
-mod nlcd;
-
-use nlcd::near_linear_cophenetic_distance::NearLinearCopheneticDistance;
+use nlcd::nlcd::near_linear_cophenetic_distance::NearLinearCopheneticDistance;
 use std::fs::File;
 use std::io::Write;
-use iter::node_iter::{Clusters, DFS};
-use node::simple_rnode::RootedZetaNode;
-use phylo::node::simple_rnode::RootedTreeNode;
-use phylo::tree::io::Newick;
-use phylo::*;
+use phylo::prelude::*;
 use clap::{arg, Command};
-use phylo::tree::{SimpleRootedTree, ops::CopheneticDistance};
+use phylo::tree::SimpleRootedTree;
 use itertools::Itertools;
-use phylo::iter::node_iter::EulerWalk;
-use phylo::tree::simple_rtree::RootedTree;
-use phylo::tree::distances::PathFunction;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 

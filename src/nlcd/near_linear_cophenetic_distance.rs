@@ -2,9 +2,19 @@ use std::{fmt::{Debug, Display}, hash::Hash};
 use fxhash::FxHashSet as HashSet;
 use fxhash::FxHashMap as HashMap;
 
-use num::{Float, Integer, NumCast, Signed, Zero};
-use phylo::{node::simple_rnode::{RootedMetaNode, RootedZetaNode, RootedTreeNode}, tree::{ops::CopheneticDistance, simple_rtree::{RootedMetaTree, RootedTree}}};
+use num::{Float, NumCast, Signed, Zero};
+use phylo::prelude::*;
 use itertools::Itertools;
+
+// pub struct TaxaIntersections<T>
+// where
+//     T: RootedMetaTree,
+// {
+//     a_int_a_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
+//     a_int_b_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
+//     b_int_a_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
+//     b_int_b_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
+// }
 
 
 pub trait NearLinearCopheneticDistance: CopheneticDistance
@@ -63,6 +73,7 @@ where
     fn cophen_dist(&self, tree: &Self, norm: u32)-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
     {
         let mut ops: Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta> = vec![];
+
         let binding1 = self.get_taxa_space().into_iter().collect::<HashSet<<Self as CopheneticDistance>::Meta>>();
         let binding2 = tree.get_taxa_space().into_iter().collect::<HashSet<<Self as CopheneticDistance>::Meta>>();
         let taxa_set = binding1.intersection(&binding2).map(|x| x.clone()).collect_vec();
@@ -86,27 +97,27 @@ where
     /// Populates vector with divide and conquer distances.
     fn populate_op_vec(&self, tree: &Self, norm: u32, taxa_set: Vec<<Self as RootedMetaTree>::Meta>, op_vec: &mut Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>)
     {
-        let double_mix_distance = self.distance_double_mix_type(tree, norm);
+        let t = self.get_median_node_id();
+        let t_hat = tree.get_median_node_id();
+        
+        let b: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(self.get_cluster(t).filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap()).filter(|x| taxa_set.contains(x)));
+        let b_hat: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(tree.get_cluster(t_hat).filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap()).filter(|x| taxa_set.contains(x)));
+
+        let a: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(self.get_taxa_space()).difference(&b).filter(|x| taxa_set.contains(x)).map(|x| x.clone()).collect();
+        let a_hat: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(tree.get_taxa_space()).difference(&b_hat).filter(|x| taxa_set.contains(x)).map(|x| x.clone()).collect();
+
+        let a_int_a_hat = a.intersection(&a_hat).map(|x| x.clone()).collect_vec();
+        let a_int_b_hat = a.intersection(&b_hat).map(|x| x.clone()).collect_vec();
+        let b_int_a_hat = b.intersection(&a_hat).map(|x| x.clone()).collect_vec();
+        let b_int_b_hat = b.intersection(&b_hat).map(|x| x.clone()).collect_vec();
+
+        let double_mix_distance = self.distance_double_mix_type(tree, norm, &t, &t_hat, &a_int_a_hat, &a_int_b_hat, &b_int_a_hat, &b_int_b_hat);
         let single_mix_distance = self.distance_single_mix_type(tree, norm);
 
         op_vec.push(double_mix_distance);
         op_vec.push(single_mix_distance);
 
-        if taxa_set.len()>2{
-            let t = self.get_median_node_id();
-            let t_hat = tree.get_median_node_id();
-            
-            let b: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(self.get_cluster(t).filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap()).filter(|x| taxa_set.contains(x)));
-            let b_hat: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(tree.get_cluster(t_hat).filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap()).filter(|x| taxa_set.contains(x)));
-    
-            let a: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(self.get_taxa_space()).difference(&b).filter(|x| taxa_set.contains(x)).map(|x| x.clone()).collect();
-            let a_hat: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(tree.get_taxa_space()).difference(&b_hat).filter(|x| taxa_set.contains(x)).map(|x| x.clone()).collect();
-    
-            let a_int_a_hat = a.intersection(&a_hat).map(|x| x.clone()).collect_vec();
-            let a_int_b_hat = a.intersection(&b_hat).map(|x| x.clone()).collect_vec();
-            let b_int_a_hat = b.intersection(&a_hat).map(|x| x.clone()).collect_vec();
-            let b_int_b_hat = b.intersection(&b_hat).map(|x| x.clone()).collect_vec();
-        
+        if taxa_set.len()>2{        
             if a_int_a_hat.len()>1{
                 let self_tree = self.contract_tree(&a_int_a_hat.iter().map(|x| self.get_taxa_node_id(x).unwrap()).collect_vec());
                 let new_tree = tree.contract_tree(&a_int_a_hat.iter().map(|x| tree.get_taxa_node_id(x).unwrap()).collect_vec());
@@ -170,7 +181,6 @@ where
             std::mem::swap(&mut alpha, &mut beta);
         }
         let sigma = Self::precompute_alpha_sums(&alpha, &beta, norm);
-        // dbg!(&sigma);
         // let mut out = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as Zero>::zero();
         
         let final_out = (0..beta.len()).map(|j| {
@@ -181,11 +191,12 @@ where
                 let t4 = sigma[j][(norm-l) as usize];
                 return t1*t2*t3*t4;
             }).sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>();
+            
             let term_2 = (0..norm+1).map(|l| {
                 let t1 = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from(Self::n_choose_k(norm, l)).unwrap();
                 let t2 = beta[j].powi((norm-l) as i32);
                 let t3 = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from((-1 as i32).pow(norm-l)).unwrap();
-                let t4 = sigma[alpha.len()-1][(norm-l) as usize]-sigma[j][(norm-l) as usize];
+                let t4 = alpha.iter().map(|a| a.powi(l as i32)).sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>()-sigma[j][l as usize];
                 return t1*t2*t3*t4;
             }).sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>();
 
@@ -222,7 +233,7 @@ where
                 false => {
                     j += 1;
                     if j < m{
-                        (0..norm+1).for_each(|l| sigma[j+1][l as usize] = sigma[j][l as usize]);
+                        (0..norm+1).for_each(|l| sigma[j][l as usize] = sigma[j-1][l as usize]);
                     }
                 },
             }
@@ -235,27 +246,22 @@ where
     /// that are present in different subtrees in both trees(raised to the p^{th} power).
     /// 
     /// This includes the following assignments: AB|A'B', AB|B'A'
-    fn distance_double_mix_type(&self, tree: &Self, norm: u32)-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
+    fn distance_double_mix_type(&self, 
+        tree: &Self, 
+        norm: u32, 
+        t: &<Self as RootedTree>::NodeID, 
+        t_hat: &<Self as RootedTree>::NodeID, 
+        a_int_a_hat: &Vec<<Self as CopheneticDistance>::Meta>,
+        a_int_b_hat: &Vec<<Self as CopheneticDistance>::Meta>,
+        b_int_a_hat: &Vec<<Self as CopheneticDistance>::Meta>,
+        b_int_b_hat: &Vec<<Self as CopheneticDistance>::Meta>)-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
     {
-        let t = self.get_median_node_id();
-        let t_hat = tree.get_median_node_id();
-        
-        let b = self.get_cluster(t.clone()).into_iter().filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap()).collect::<HashSet<_>>();
-        let b_hat = tree.get_cluster(t_hat.clone()).into_iter().filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap()).collect::<HashSet<_>>();
-
-        let a: HashSet<<Self as RootedMetaTree>::Meta> = HashSet::from_iter(self.get_cluster(self.get_root_id()).into_iter().filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap())).difference(&b).map(|x| x.clone()).collect();
-        let a_hat: HashSet<<Self as RootedMetaTree>::Meta> = HashSet::from_iter(tree.get_cluster(tree.get_root_id()).into_iter().filter(|x| x.get_taxa().is_some()).map(|x| x.get_taxa().unwrap())).difference(&b_hat).map(|x| x.clone()).collect();
-
-        // AB|B'A'
-        let a_int_b_hat: HashSet<<Self as RootedMetaTree>::Meta> = a.intersection(&b_hat).map(|x| x.clone()).collect();
-        let b_int_a_hat: HashSet<<Self as RootedMetaTree>::Meta> = b.intersection(&a_hat).map(|x| x.clone()).collect();
-
         let alpha = self.get_cntr(a_int_b_hat.iter().map(|x| self.get_taxa_node_id(&x).unwrap()).collect::<HashSet<Self::NodeID>>());
         let beta = tree.get_cntr(b_int_a_hat.iter().map(|x| tree.get_taxa_node_id(&x).unwrap()).collect::<HashSet<Self::NodeID>>());
 
         // AB|A'B'
-        let b_int_b_hat_len = b.intersection(&b_hat).map(|x| x.clone()).collect_vec().len();
-        let dd2 = a.intersection(&a_hat).map(|x| x.clone())
+        let b_int_b_hat_len = b_int_b_hat.len();
+        let dd2 = a_int_a_hat.iter().map(|x| x.clone())
             .map(|x| {
                 let t_lca_id = self.get_lca_id(&vec![self.get_taxa_node_id(&x).unwrap(), t.clone()]);
                 let t_hat_lca_id = tree.get_lca_id(&vec![tree.get_taxa_node_id(&x).unwrap(), t_hat.clone()]);
