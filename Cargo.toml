@@ -14,3 +14,11 @@ rayon = "1.10.0"
 rand = "0.8.5"
 indicatif = "0.17.8"
 clap = "4.5.7"
+
+[dev-dependencies]
+divan = "0.1.14"
+
+[[bench]]
+name = "main"
+harness = false
+
