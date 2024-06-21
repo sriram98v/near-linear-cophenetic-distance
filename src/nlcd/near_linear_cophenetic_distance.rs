@@ -45,12 +45,6 @@ where
         self.contract_tree(&upper_tree_taxa.iter().map(|x| self.get_taxa_node_id(x).unwrap()).collect_vec())
     }
 
-    // Returns zeta of leaf by taxa
-    fn get_zeta_taxa(&self, taxa: &<Self as CopheneticDistance>::Meta)-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
-    {
-        self.get_zeta(self.get_taxa_node_id(taxa).unwrap()).unwrap()
-    }
-
     /// Returns value of n choose k.
     fn n_choose_k(n: u32, k: u32)-> i32
     {
@@ -77,8 +71,15 @@ where
         self.populate_op_vec(tree, norm, taxa_set.clone(), &mut ops);
         // dbg!(&ops);
 
-        return ops.into_iter().sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>()
+        let distance = ops.into_iter().sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>()
             .powf(<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from(norm).unwrap().powi(-1));
+    
+        return distance + taxa_set.iter()
+            .map(|x| {
+            let zeta_1 = self.get_zeta_taxa(x);
+            let zeta_2 = tree.get_zeta_taxa(x);
+            return (zeta_1-zeta_2).abs()
+        }).sum();
 
     }
 
@@ -168,14 +169,66 @@ where
         if alpha.last().unwrap()>beta.last().unwrap(){
             std::mem::swap(&mut alpha, &mut beta);
         }
-        let mut out = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as Zero>::zero();
-        for a in &alpha{
-            for b in &beta{
-                out = out + (a.clone()-b.clone()).abs().powi(norm as i32);
+        let sigma = Self::precompute_alpha_sums(&alpha, &beta, norm);
+        // dbg!(&sigma);
+        // let mut out = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as Zero>::zero();
+        
+        let final_out = (0..beta.len()).map(|j| {
+            let term_1 = (0..norm+1).map(|l| {
+                let t1 = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from(Self::n_choose_k(norm, l)).unwrap();
+                let t2 = beta[j].powi(l as i32);
+                let t3 = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from((-1 as i32).pow(norm-l)).unwrap();
+                let t4 = sigma[j][(norm-l) as usize];
+                return t1*t2*t3*t4;
+            }).sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>();
+            let term_2 = (0..norm+1).map(|l| {
+                let t1 = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from(Self::n_choose_k(norm, l)).unwrap();
+                let t2 = beta[j].powi((norm-l) as i32);
+                let t3 = <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from((-1 as i32).pow(norm-l)).unwrap();
+                let t4 = sigma[alpha.len()-1][(norm-l) as usize]-sigma[j][(norm-l) as usize];
+                return t1*t2*t3*t4;
+            }).sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>();
+
+            return term_1+term_2;
+        }).sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>();
+
+        // dbg!(final_out);
+        // for a in &alpha{
+        //     for b in &beta{
+        //         out = out + (a.clone()-b.clone()).abs().powi(norm as i32);
+        //     }
+        // }
+        // dbg!(out);
+        final_out
+    }
+
+    /// Algorithm 3 for precomputation of alpha sums
+    fn precompute_alpha_sums(alpha: &Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>, beta: &Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>, norm: u32) -> Vec<Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>>
+    {
+        // dbg!(alpha, beta);
+        let mut j = 0;
+        let mut i = 0;
+        let k = alpha.len();
+        let m = beta.len();
+
+        let mut sigma = vec![vec![<<Self as RootedTree>::Node as RootedZetaNode>::Zeta::zero(); (norm+1) as usize]; m];
+
+        while j < m {
+            match i < k && alpha[i]<=beta[j]{
+                true => {
+                    (0..norm+1).for_each(|l| sigma[j][l as usize] = sigma[j][l as usize] + alpha[i].powi(l as i32));
+                    i += 1;
+                },
+                false => {
+                    j += 1;
+                    if j < m{
+                        (0..norm+1).for_each(|l| sigma[j+1][l as usize] = sigma[j][l as usize]);
+                    }
+                },
             }
         }
-        out
 
+        sigma
     }
 
     /// This method generates the distance contributed by all taxa pairs 
@@ -208,9 +261,9 @@ where
                 let t_hat_lca_id = tree.get_lca_id(&vec![tree.get_taxa_node_id(&x).unwrap(), t_hat.clone()]);
                 let zeta_1 = self.get_zeta(t_lca_id).unwrap();
                 let zeta_2 = tree.get_zeta(t_hat_lca_id).unwrap();
-                return (zeta_1-zeta_2).abs().powi(norm as i32) * <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from(b_int_b_hat_len).unwrap()
+                return (zeta_1-zeta_2).abs().powi(norm as i32)
             })
-            .sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>();
+            .sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>() * <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta as NumCast>::from(b_int_b_hat_len).unwrap();
 
         return Self::seq_product(alpha, beta, norm) + dd2;
     }
