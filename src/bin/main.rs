@@ -6,14 +6,15 @@ use clap::{arg, Command};
 use phylo::tree::SimpleRootedTree;
 use itertools::Itertools;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::time::{Duration, Instant};
 use rayon::prelude::*;
 
 fn main(){
     let matches = Command::new("Generalized suffix tree")
         .version("1.0")
         .author("Sriram Vijendran <vijendran.sriram@gmail.com>")
-        .subcommand(Command::new("repr")
-            .about("Reproduce results from article")
+        .subcommand(Command::new("repr-emp")
+            .about("Reproduce empirical results from article")
             .arg(arg!(-k --norm <NORM> "nth norm")
                 .value_parser(clap::value_parser!(u32))
             )
@@ -25,19 +26,43 @@ fn main(){
                 .required(true)
                 .value_parser(clap::value_parser!(usize))
             )
-            .arg(arg!(-t --threads <THREADS> "number of threads")
+            .arg(arg!(-o --out_file <OUT_FILE> "output file")
+                .required(true)
+                .value_parser(clap::value_parser!(String))
+            )
+        )
+        .subcommand(Command::new("repr-sca")
+            .about("Reproduce scalability results from article")
+            .arg(arg!(-k --norm <NORM> "nth norm")
+                .value_parser(clap::value_parser!(u32))
+            )
+            .arg(arg!(-s --num_start_taxa <NUM_START_TAXA> "number of starting taxa")
+                .required(true)
                 .value_parser(clap::value_parser!(usize))
+            )
+            .arg(arg!(-e --num_end_taxa <NUM_END_TAXA> "number of ending taxa")
+                .required(true)
+                .value_parser(clap::value_parser!(usize))
+            )
+            .arg(arg!(-x --step_size <STEP_SIZE> "Step size")
+                .required(true)
+                .value_parser(clap::value_parser!(usize))
+            )
+            .arg(arg!(-i --num_iter <NUM_ITER> "Step size")
+                .required(true)
+                .value_parser(clap::value_parser!(u32))
             )
             .arg(arg!(-o --out_file <OUT_FILE> "output file")
                 .required(true)
                 .value_parser(clap::value_parser!(String))
             )
         )
+
         .about("CLI tool for quick tree operations")
         .get_matches();
 
         match matches.subcommand(){
-            Some(("repr",  sub_m)) => {            
+            Some(("repr-emp",  sub_m)) => {            
                 // Returns node depth
                 fn depth(tree: &SimpleRootedTree, node_id: <SimpleRootedTree as RootedTree>::NodeID)->f32
                 {
@@ -118,14 +143,13 @@ fn main(){
                     }).collect::<Vec<f32>>()
                 }
                 
+                // Empirical study results
                 let dist_types = ["uniform", "yule"];
                 let zeta_types = ["depth", "size", "height"];
                 let norm = sub_m.get_one::<u32>("norm").expect("required");
                 let num_trees = sub_m.get_one::<usize>("num_trees").expect("required");
                 let num_taxa = sub_m.get_one::<usize>("num_taxa").expect("required");
 
-                // todo: add functionality to set number of threads
-                let num_threads: usize = *sub_m.get_one::<usize>("threads").unwrap_or(&1);
                 let mut output_file = File::create(sub_m.get_one::<String>("out_file").expect("required")).unwrap();
                 println!("Number of trees: {}", num_trees);
                 println!("Number of taxa per tree: {}", num_taxa);
@@ -154,7 +178,72 @@ fn main(){
                     }
                 }
                 
-                output_file.write_all(all_dists.join("\n").as_bytes()).unwrap();            
+                output_file.write_all(all_dists.join("\n").as_bytes()).unwrap();
+            },
+
+            Some(("repr-sca",  sub_m)) => {
+
+                fn depth(tree: &SimpleRootedTree, node_id: <SimpleRootedTree as RootedTree>::NodeID)->f32
+                {
+                    EulerWalk::get_node_depth(tree, node_id) as f32
+                }
+
+
+                let norm = sub_m.get_one::<u32>("norm").expect("required");
+                let num_start_taxa = sub_m.get_one::<usize>("num_start_taxa").expect("required");
+                let step_size = sub_m.get_one::<usize>("step_size").expect("required");
+                let num_end_taxa = sub_m.get_one::<usize>("num_end_taxa").expect("required") + step_size;
+                let num_iter = sub_m.get_one::<u32>("num_iter").expect("required");
+
+                let mut output_file = File::create(sub_m.get_one::<String>("out_file").expect("required")).unwrap();
+
+                // Generating trees
+                let trees = (*num_start_taxa..num_end_taxa)
+                .step_by(*step_size)
+                    .map(|x| {
+                        dbg!(&x);
+                        let mut t1 = SimpleRootedTree::yule(x).unwrap();
+                        let mut t2 = SimpleRootedTree::yule(x).unwrap();
+                        t1.precompute_constant_time_lca();
+                        t2.precompute_constant_time_lca();
+                        t1.set_zeta(depth);
+                        t2.set_zeta(depth);
+                        return (t1, t2);
+                    })
+                    .collect_vec();
+
+                let mean_runtimes_naive = trees.iter()
+                    .map(|(t1, t2)| {
+                        let mut total_runtime = Duration::from_secs(0);
+                        for _ in 0..num_iter.clone(){
+                            let now = Instant::now();
+                            let _  = t1.cophen_dist_naive(t2, norm.clone());
+                            total_runtime += now.elapsed();
+                        }
+                        return total_runtime/ *num_iter;
+                    })
+                    .map(|x| format!("{}", x.as_millis()))
+                    .collect_vec()
+                    .join(", ");
+
+                let mean_runtimes_nlcd = trees.iter()
+                    .map(|(t1, t2)| {
+                        let mut total_runtime = Duration::from_secs(0);
+                        for _ in 0..num_iter.clone(){
+                            let now = Instant::now();
+                            let _  = t1.cophen_dist(t2, norm.clone());
+                            total_runtime += now.elapsed();
+                        }
+                        return total_runtime/ *num_iter;
+                    })
+                    .map(|x| format!("{}", x.as_millis()))
+                    .collect_vec()
+                    .join(",");
+
+                println!("{}", mean_runtimes_naive);
+                println!("{}", mean_runtimes_nlcd);
+
+                output_file.write_all(vec![format!("Naive:{}", mean_runtimes_naive), format!("NLCD:{}", mean_runtimes_nlcd)].join("\n").as_bytes()).unwrap();
             },
             _ => {
                 println!("No option selected! Refer help page (-h flag)");
