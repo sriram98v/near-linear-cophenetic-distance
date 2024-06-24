@@ -6,13 +6,19 @@ use clap::{arg, Command};
 use phylo::tree::SimpleRootedTree;
 use itertools::Itertools;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::time::{Duration, Instant};
+use std::{fs, time::{Duration, Instant}};
 use rayon::prelude::*;
 
 fn main(){
-    let matches = Command::new("Generalized suffix tree")
+    let matches = Command::new("Near Linear Cophenetic Distance")
         .version("1.0")
         .author("Sriram Vijendran <vijendran.sriram@gmail.com>")
+            .arg(arg!(-f --input_file <FILE_PATH> "Input file containing trees")
+            .value_parser(clap::value_parser!(String))
+        )
+        .arg(arg!(-k --norm <NORM> "nth norm")
+            .value_parser(clap::value_parser!(u32))
+        )
         .subcommand(Command::new("repr-emp")
             .about("Reproduce empirical results from article")
             .arg(arg!(-k --norm <NORM> "nth norm")
@@ -249,8 +255,32 @@ fn main(){
 
                 output_file.write_all(vec![format!("Naive:{}", mean_runtimes_naive), format!("NLCD:{}", mean_runtimes_nlcd)].join("\n").as_bytes()).unwrap();
             },
+            
             _ => {
-                println!("No option selected! Refer help page (-h flag)");
+                fn depth(tree: &SimpleRootedTree, node_id: <SimpleRootedTree as RootedTree>::NodeID)->f32
+                {
+                    EulerWalk::get_node_depth(tree, node_id) as f32
+                }
+
+                // Empirical study results
+                let norm = matches.get_one::<u32>("norm").expect("Norm argument required");
+                let input_file = matches.get_one::<String>("input_file").expect("tree-file argument required");
+
+                let contents = fs::read_to_string(input_file)
+                    .expect("Should have been able to read the file");
+
+                let tree_strings = contents.split("\n").collect_vec();
+
+                let mut t1 = SimpleRootedTree::from_newick(tree_strings[0].as_bytes());
+                let mut t2 = SimpleRootedTree::from_newick(tree_strings[1].as_bytes());
+
+                t1.precompute_constant_time_lca();
+                t2.precompute_constant_time_lca();
+
+                t1.set_zeta(depth);
+                t2.set_zeta(depth);
+
+                println!("Norm: {}, Cophenetic-distance: {}", norm, t1.cophen_dist_naive(&t2, *norm));
             }
         }
 }
