@@ -22,6 +22,7 @@ fn main(){
         .subcommand(Command::new("repr-emp")
             .about("Reproduce empirical results from article")
             .arg(arg!(-k --norm <NORM> "nth norm")
+                .required(true)
                 .value_parser(clap::value_parser!(u32))
             )
             .arg(arg!(-n --num_trees <NUM_TREES> "number of trees")
