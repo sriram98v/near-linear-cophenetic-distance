@@ -7,15 +7,22 @@ use nlcd::nlcd::near_linear_cophenetic_distance::NearLinearCopheneticDistance;
 
 #[test]
 fn cophenetic_dist() {
+    let norm = 1;
+
     fn depth(tree: &SimpleRootedTree, node_id: <SimpleRootedTree as RootedTree>::NodeID)->f32
     {
         tree.depth(node_id) as f32
     }
-    let t1_input_str: String = String::from("((A,B),C);");
-    let t2_input_str: String = String::from("(A,(B,C));");
+    let t1_input_str: String = String::from("(B,(C,(A,D)));");
+    let t2_input_str: String = String::from("(A,(C,(B,D)));");
     let mut t1 = SimpleRootedTree::from_newick(t1_input_str.as_bytes());
     let mut t2 = SimpleRootedTree::from_newick(t2_input_str.as_bytes());
-    
+
+    // let mut t1 = SimpleRootedTree::yule(100).unwrap();
+    // let mut t2 = SimpleRootedTree::yule(100).unwrap();
+    // dbg!(format!("{}", t1.to_newick()));
+    // dbg!(format!("{}", t2.to_newick()));
+
     t1.precompute_constant_time_lca();
     t2.precompute_constant_time_lca();
 
