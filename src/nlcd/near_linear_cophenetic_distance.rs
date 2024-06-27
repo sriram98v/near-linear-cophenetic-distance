@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Display}, hash::Hash};
+use std::{fmt::{Debug, Display}, hash::Hash, ops::IndexMut};
 use fxhash::FxHashSet as HashSet;
 use fxhash::FxHashMap as HashMap;
 
@@ -6,16 +6,110 @@ use num::{Float, NumCast, Signed, Zero};
 use phylo::prelude::*;
 use itertools::Itertools;
 
-// pub struct TaxaIntersections<T>
-// where
-//     T: RootedMetaTree,
-// {
-//     a_int_a_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
-//     a_int_b_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
-//     b_int_a_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
-//     b_int_b_hat: Vec<<T as NearLinearCopheneticDistance>::Meta>,
-// }
+pub enum NlcdAttribute<T:Float+NumCast+Signed+Zero>
+{
+    Norms(Vec<T>),
+    Count(u32),
+    Kappa(T),
+}
 
+
+pub enum NlcdAttributeType{
+    Sigma,
+    SigmaPos,
+    SigmaNeg,
+    Delta,
+    // CounterpartCount,
+}
+
+pub trait NlcdNodeAttributes<T: Float+NumCast+Signed+Zero>: IndexMut<NlcdAttributeType, Output = Vec<T>>
+{
+    fn reset(&mut self);
+
+    fn get_sigma(&self)->&Vec<T>
+    {
+        &self[NlcdAttributeType::Sigma]
+    }
+    fn get_sigma_pos(&self)->&Vec<T>
+    {
+        &self[NlcdAttributeType::SigmaPos]
+    }
+    fn get_sigma_neg(&self)->&Vec<T>
+    {
+        &self[NlcdAttributeType::SigmaNeg]
+    }
+    fn get_delta(&self)->&Vec<T>
+    {
+        &self[NlcdAttributeType::Delta]
+    }
+
+    fn set_sigma(&mut self, value: Vec<T>)
+    {
+        self[NlcdAttributeType::Sigma] = value;
+    }
+    fn set_sigma_pos(&mut self, value: Vec<T>)
+    {
+        self[NlcdAttributeType::SigmaPos] = value;
+    }
+    fn set_sigma_neg(&mut self, value: Vec<T>)
+    {
+        self[NlcdAttributeType::SigmaNeg] = value;
+    }
+    fn set_delta(&mut self, value: Vec<T>)
+    {
+        self[NlcdAttributeType::Delta] = value;
+    }
+}
+
+pub trait NlcdTreeAttributes<U, T: Float+NumCast+Signed+Zero>: IndexMut<U, Output: NlcdNodeAttributes<T>>
+{
+    fn get_sigma(&self, node_id: U)->Vec<T>
+    {
+        self[node_id][NlcdAttributeType::Sigma].clone()
+    }
+
+    fn get_sigma_pos(&self, node_id: U)->Vec<T>
+    {
+        self[node_id][NlcdAttributeType::SigmaPos].clone()
+    }
+
+    fn get_sigma_neg(&self, node_id: U)->Vec<T>
+    {
+        self[node_id][NlcdAttributeType::SigmaNeg].clone()
+    }
+
+    fn get_delta(&self, node_id: U)->Vec<T>
+    {
+        self[node_id][NlcdAttributeType::Delta].clone()
+    }
+
+    
+    fn set_sigma(&mut self, node_id: U, value: Vec<T>)
+    {
+        self[node_id][NlcdAttributeType::Sigma] = value;
+    }
+
+    fn set_sigma_pos(&mut self, node_id: U, value: Vec<T>)
+    {
+        self[node_id][NlcdAttributeType::SigmaPos] = value;
+    }
+
+    fn set_sigma_neg(&mut self, node_id: U, value: Vec<T>)
+    {
+        self[node_id][NlcdAttributeType::SigmaNeg] = value;
+    }
+
+    fn set_delta(&mut self, node_id: U, value: Vec<T>)
+    {
+        self[node_id][NlcdAttributeType::Delta] = value;
+    }
+
+    
+    fn reset_node(&mut self, node_id: U)
+    {
+        self[node_id].reset()
+    }
+}
 
 pub trait NearLinearCopheneticDistance: CopheneticDistance
 where
@@ -25,6 +119,7 @@ where
     type Meta: Display + Debug + Eq + PartialEq + Clone + Ord + Hash + Send + Sync;
 
     // helper functions
+    fn tree_attributes(&self, norm: u32)->impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>;
 
     /// Returns taxa present in upper tree.
     fn upper_tree_taxa(&self)->impl Iterator<Item=<Self as CopheneticDistance>::Meta>
@@ -104,7 +199,10 @@ where
         let binding2 = tree.get_taxa_space().into_iter().collect::<HashSet<<Self as CopheneticDistance>::Meta>>();
         let taxa_set = binding1.intersection(&binding2).map(|x| x.clone()).collect_vec();
 
-        self.populate_op_vec(tree, norm, taxa_set.clone(), &mut ops);
+        let mut self_node_attributes = self.tree_attributes(norm);
+        let mut tree_node_attributes = tree.tree_attributes(norm);
+
+        self.populate_op_vec(tree, norm, taxa_set.clone(), &mut ops, &mut self_node_attributes, &mut tree_node_attributes);
 
         let distance = ops.into_iter().sum::<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>();
     
@@ -119,7 +217,14 @@ where
     }
 
     /// Populates vector with divide and conquer distances.
-    fn populate_op_vec(&self, tree: &Self, norm: u32, taxa_set: Vec<<Self as RootedMetaTree>::Meta>, op_vec: &mut Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>)
+    fn populate_op_vec(&self,
+        tree: &Self,
+        norm: u32,
+        taxa_set: Vec<<Self as RootedMetaTree>::Meta>,
+        op_vec: &mut Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
+        self_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
+        tree_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
+    ) 
     {
         let t = self.get_median_node_id();
         let t_hat = tree.get_median_node_id();
@@ -136,7 +241,7 @@ where
         let b_int_b_hat = b.intersection(&b_hat).map(|x| x.clone()).collect_vec();
 
         let double_mix_distance = self.distance_double_mix_type(tree, norm, &t, &t_hat, &a_int_a_hat, &a_int_b_hat, &b_int_a_hat, &b_int_b_hat);
-        let single_mix_distance = self.distance_single_mix_type(tree, norm, &t, &t_hat, &a_int_a_hat, &a_int_b_hat, &b_int_a_hat, &b_int_b_hat);
+        let single_mix_distance = self.distance_single_mix_type(tree, norm, &t, &t_hat, self_node_attributes, tree_node_attributes, &a_int_a_hat, &a_int_b_hat, &b_int_a_hat, &b_int_b_hat);
 
         op_vec.push(double_mix_distance);
         op_vec.push(single_mix_distance);
@@ -145,25 +250,25 @@ where
             if a_int_a_hat.len()>1{
                 let self_tree = self.contract_tree(&a_int_a_hat.iter().map(|x| self.get_taxa_node_id(x).unwrap()).collect_vec());
                 let new_tree = tree.contract_tree(&a_int_a_hat.iter().map(|x| tree.get_taxa_node_id(x).unwrap()).collect_vec());
-                self_tree.populate_op_vec(&new_tree, norm, a_int_a_hat, op_vec);
+                self_tree.populate_op_vec(&new_tree, norm, a_int_a_hat, op_vec, self_node_attributes, tree_node_attributes);
             }
     
             if a_int_b_hat.len()>1{
                 let self_tree = self.contract_tree(&a_int_b_hat.iter().map(|x| self.get_taxa_node_id(x).unwrap()).collect_vec());
                 let new_tree = tree.contract_tree(&a_int_b_hat.iter().map(|x| tree.get_taxa_node_id(x).unwrap()).collect_vec());
-                self_tree.populate_op_vec(&new_tree, norm, a_int_b_hat, op_vec);
+                self_tree.populate_op_vec(&new_tree, norm, a_int_b_hat, op_vec, self_node_attributes, tree_node_attributes);
             }
     
             if b_int_b_hat.len()>1{
                 let self_tree = self.contract_tree(&b_int_b_hat.iter().map(|x| self.get_taxa_node_id(x).unwrap()).collect_vec());
                 let new_tree = tree.contract_tree(&b_int_b_hat.iter().map(|x| tree.get_taxa_node_id(x).unwrap()).collect_vec());
-                self_tree.populate_op_vec(&new_tree, norm, b_int_b_hat, op_vec);
+                self_tree.populate_op_vec(&new_tree, norm, b_int_b_hat, op_vec, self_node_attributes, tree_node_attributes);
             }
     
             if b_int_a_hat.len()>1{
                 let self_tree = self.contract_tree(&b_int_a_hat.iter().map(|x| self.get_taxa_node_id(x).unwrap()).collect_vec());
                 let new_tree = tree.contract_tree(&b_int_a_hat.iter().map(|x| tree.get_taxa_node_id(x).unwrap()).collect_vec());
-                self_tree.populate_op_vec(&new_tree, norm, b_int_a_hat, op_vec);
+                self_tree.populate_op_vec(&new_tree, norm, b_int_a_hat, op_vec, self_node_attributes, tree_node_attributes);
             }
         }
     }
@@ -296,23 +401,26 @@ where
         tree: &Self,
         norm: u32,
         t: &<Self as RootedTree>::NodeID, 
-        t_hat: &<Self as RootedTree>::NodeID, 
+        t_hat: &<Self as RootedTree>::NodeID,
+        self_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
+        tree_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
         a_int_a_hat: &Vec<<Self as CopheneticDistance>::Meta>,
         a_int_b_hat: &Vec<<Self as CopheneticDistance>::Meta>,
         b_int_a_hat: &Vec<<Self as CopheneticDistance>::Meta>,
-        b_int_b_hat: &Vec<<Self as CopheneticDistance>::Meta>)-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
+        b_int_b_hat: &Vec<<Self as CopheneticDistance>::Meta>
+    )-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
     {
         if self.num_taxa()<=2{
             return <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>::zero();
         }
         // AA|A'B'
-        let d1 = Self::single_mix_xxxy(self, tree, t, t_hat, norm, a_int_a_hat, true);
+        let d1 = Self::single_mix_xxxy(self, tree, t, t_hat, self_node_attributes, tree_node_attributes, norm, a_int_a_hat, true);
         // AB|A'A'
-        let d2 = Self::single_mix_xxxy(tree, self, t_hat, t, norm, a_int_a_hat, true);
+        let d2 = Self::single_mix_xxxy(tree, self, t_hat, t, tree_node_attributes, self_node_attributes, norm, a_int_a_hat, true);
         // BB|A'B'
-        let d3 = Self::single_mix_xxxy(self, tree, t, t_hat, norm, b_int_a_hat, false);
+        let d3 = Self::single_mix_xxxy(self, tree, t, t_hat, self_node_attributes, tree_node_attributes, norm, b_int_a_hat, false);
         // AB|B'B'
-        let d4 = Self::single_mix_xxxy(tree, self, t_hat, t, norm, a_int_b_hat, false);
+        let d4 = Self::single_mix_xxxy(tree, self, t_hat, t, tree_node_attributes, self_node_attributes, norm, a_int_b_hat, false);
 
         return d1+d2+d3+d4;
     }
@@ -320,32 +428,35 @@ where
     fn preprocess_single_mix_even(t1: &Self,
         t2: &Self, 
         t2_median: &<Self as RootedTree>::NodeID,
+        t1_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
+        t2_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
         norm: u32,
         taxa_set: &Vec<<Self as CopheneticDistance>::Meta>,
         sigma: &mut HashMap<<Self as RootedTree>::NodeID,Vec<<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>>,
         counterpart_count: &mut HashMap<<Self as RootedTree>::NodeID,u32>,
-        upper_mixed: bool)
-        {
-            let leaf_iter = match upper_mixed{
-                true => t1.upper_tree_taxa().collect_vec(),
-                false => t1.lower_tree_taxa().collect_vec(),
-            };
-            for leaf in leaf_iter{
-                    match taxa_set.contains(&leaf){
-                        true => {
-                            let t1_node_id = t1.get_taxa_node_id(&leaf).unwrap();
-                            let t2_node_id = t2.get_taxa_node_id(&leaf).unwrap();
-                            let lca_x_t_hat = t2.get_lca_id(&vec![t2_node_id.clone(), t2_median.clone()]);
-                            let beta = t2.get_zeta(lca_x_t_hat).unwrap();
-                            sigma.insert(t1_node_id, (0..norm+1).map(|l| beta.powi(l as i32)).collect_vec());
-                        },
-                        false => {
-                            let node_id = t1.get_taxa_node_id(&leaf).unwrap();
-                            counterpart_count.entry(node_id).and_modify(|c| *c += 1);
-                        },    
-                }
+        upper_mixed: bool
+    )
+    {
+        let leaf_iter = match upper_mixed{
+            true => t1.upper_tree_taxa().collect_vec(),
+            false => t1.lower_tree_taxa().collect_vec(),
+        };
+        for leaf in leaf_iter{
+                match taxa_set.contains(&leaf){
+                    true => {
+                        let t1_node_id = t1.get_taxa_node_id(&leaf).unwrap();
+                        let t2_node_id = t2.get_taxa_node_id(&leaf).unwrap();
+                        let lca_x_t_hat = t2.get_lca_id(&vec![t2_node_id.clone(), t2_median.clone()]);
+                        let beta = t2.get_zeta(lca_x_t_hat).unwrap();
+                        sigma.insert(t1_node_id, (0..norm+1).map(|l| beta.powi(l as i32)).collect_vec());
+                    },
+                    false => {
+                        let node_id = t1.get_taxa_node_id(&leaf).unwrap();
+                        counterpart_count.entry(node_id).and_modify(|c| *c += 1);
+                    },    
             }
         }
+    }
 
 
     fn preprocess_single_mix_odd(t1: &Self,
@@ -415,10 +526,13 @@ where
     fn single_mix_xxxy(t1: &Self, 
         t2: &Self,
         t1_median: &<Self as RootedTree>::NodeID,
-        t2_median: &<Self as RootedTree>::NodeID, 
+        t2_median: &<Self as RootedTree>::NodeID,
+        t1_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
+        t2_node_attributes: &mut impl NlcdTreeAttributes<<Self as RootedTree>::NodeID, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta>,
         norm: u32, 
         taxa_set: &Vec<<Self as CopheneticDistance>::Meta>,
-        upper_mixed: bool)-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
+        upper_mixed: bool
+    )-><<Self as RootedTree>::Node as RootedZetaNode>::Zeta
     {
         let subtree_nodes = match upper_mixed{
             true => {        
@@ -431,14 +545,16 @@ where
         };
 
         let mut kappa: HashMap<_,_> = t1.get_node_ids().map(|x| (x, <<Self as RootedTree>::Node as RootedZetaNode>::Zeta::zero())).collect();
-        let mut counterpart_count: HashMap<_,_> = t1.get_node_ids().map(|x| (x, 0_u32)).collect();
 
         match norm%2{
             0 => {
                 // setting sigma to zeros; kappa already set.
-                let mut sigma: HashMap<_,_> = t1.get_node_ids().map(|x| (x, vec![<<Self as RootedTree>::Node as RootedZetaNode>::Zeta::zero();norm as usize+1])).collect();        
+                let mut sigma: HashMap<_,_> = t1.get_node_ids().map(|x| (x, vec![<<Self as RootedTree>::Node as RootedZetaNode>::Zeta::zero();norm as usize+1])).collect();
+                t1.get_node_ids().for_each(|node_id| t1_node_attributes.reset_node(node_id));
+                let mut counterpart_count: HashMap<_,_> = t1.get_node_ids().map(|x| (x, 0_u32)).collect();
+
                 // Preprocessing loop
-                Self::preprocess_single_mix_even(t1, t2, &t2_median, norm, taxa_set, &mut sigma, &mut counterpart_count, upper_mixed);
+                Self::preprocess_single_mix_even(t1, t2, &t2_median, t1_node_attributes, t2_node_attributes, norm, taxa_set, &mut sigma, &mut counterpart_count, upper_mixed);
 
                 for v_id in subtree_nodes.iter(){
                     if v_id!=&t1.get_root_id() && !t1.is_leaf(&v_id){
@@ -474,6 +590,7 @@ where
                 }
             }
             _ => {
+                let mut counterpart_count: HashMap<_,_> = t1.get_node_ids().map(|x| (x, 0_u32)).collect();
                 let mut sigma_pos: HashMap<_,_> = t1.get_node_ids().map(|x| (x, vec![<<Self as RootedTree>::Node as RootedZetaNode>::Zeta::zero();norm as usize+1])).collect();
                 let mut sigma_neg: HashMap<_,_> = t1.get_node_ids().map(|x| (x, vec![<<Self as RootedTree>::Node as RootedZetaNode>::Zeta::zero();norm as usize+1])).collect();        
                 let mut delta: HashMap<_,_> = t1.get_node_ids().map(|x| (x, vec![<<Self as RootedTree>::Node as RootedZetaNode>::Zeta::zero(); norm as usize+1])).collect();
