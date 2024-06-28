@@ -14,7 +14,6 @@ pub struct NodeAttributes{
     delta: NlcdAttribute<f32>,
     counterpart_count: NlcdAttribute<f32>,
     kappa: NlcdAttribute<f32>,
-    norm: u32,
 }
 
 impl NodeAttributes{
@@ -27,7 +26,6 @@ impl NodeAttributes{
             delta: NlcdAttribute::Norms(vec![0_f32; (norm as usize)+1]),
             counterpart_count: NlcdAttribute::Count(0_u32),
             kappa: NlcdAttribute::Kappa(0_f32),
-            norm: norm,
         }
     }
 }
@@ -60,17 +58,9 @@ impl IndexMut<NlcdAttributeType> for NodeAttributes{
     }
 }
 
-impl NlcdNodeAttributes<f32> for NodeAttributes{
-    fn reset(&mut self) {
-        self.set_sigma(vec![0_f32;(self.norm as usize)+1]);
-        self.set_sigma_pos(vec![0_f32;(self.norm as usize)+1]);
-        self.set_sigma_neg(vec![0_f32;(self.norm as usize)+1]);
-        self.set_delta(vec![0_f32;(self.norm as usize)+1]);
-        self.set_counterpart_count(0_u32);
-        self.set_kappa(0_f32);
-    }
-}
+impl NlcdNodeAttributes<f32> for NodeAttributes{}
 
+#[derive(Debug)]
 pub struct TreeNodeAttributes{
     attr: Vec<NodeAttributes>,
 }
