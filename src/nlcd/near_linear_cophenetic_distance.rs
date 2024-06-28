@@ -6,6 +6,7 @@ use num::{Float, NumCast, Signed, Zero};
 use phylo::prelude::*;
 use itertools::Itertools;
 
+#[derive(Debug, Clone)]
 pub enum NlcdAttribute<T:Float+NumCast+Signed+Zero>
 {
     Norms(Vec<T>),
@@ -19,45 +20,80 @@ pub enum NlcdAttributeType{
     SigmaPos,
     SigmaNeg,
     Delta,
-    // CounterpartCount,
+    CounterpartCount,
+    Kappa,
 }
 
-pub trait NlcdNodeAttributes<T: Float+NumCast+Signed+Zero>: IndexMut<NlcdAttributeType, Output = Vec<T>>
+pub trait NlcdNodeAttributes<T: Float+NumCast+Signed+Zero>: IndexMut<NlcdAttributeType, Output = NlcdAttribute<T>>
 {
     fn reset(&mut self);
 
     fn get_sigma(&self)->&Vec<T>
     {
-        &self[NlcdAttributeType::Sigma]
+        match &self[NlcdAttributeType::Sigma]{
+            NlcdAttribute::Norms(c) => &c,
+            _ => panic!("Oops"),
+        }
     }
     fn get_sigma_pos(&self)->&Vec<T>
     {
-        &self[NlcdAttributeType::SigmaPos]
+        match &self[NlcdAttributeType::SigmaPos]{
+            NlcdAttribute::Norms(c) => &c,
+            _ => panic!("Oops"),
+        }
     }
     fn get_sigma_neg(&self)->&Vec<T>
     {
-        &self[NlcdAttributeType::SigmaNeg]
+        match &self[NlcdAttributeType::SigmaNeg]{
+            NlcdAttribute::Norms(c) => &c,
+            _ => panic!("Oops"),
+        }
     }
     fn get_delta(&self)->&Vec<T>
     {
-        &self[NlcdAttributeType::Delta]
+        match &self[NlcdAttributeType::Delta]{
+            NlcdAttribute::Norms(c) => &c,
+            _ => panic!("Oops"),
+        }
+    }
+    fn get_counterpart_count(&self)->u32
+    {
+        match &self[NlcdAttributeType::CounterpartCount]{
+            NlcdAttribute::Count(c) => c.clone(),
+            _ => panic!("Oops"),
+        }
+    }
+    fn get_kappa(&self)->&T
+    {
+        match &self[NlcdAttributeType::Kappa]{
+            NlcdAttribute::Kappa(c) => c,
+            _ => panic!("Oops"),
+        }
     }
 
     fn set_sigma(&mut self, value: Vec<T>)
     {
-        self[NlcdAttributeType::Sigma] = value;
+        self[NlcdAttributeType::Sigma] = NlcdAttribute::Norms(value);
     }
     fn set_sigma_pos(&mut self, value: Vec<T>)
     {
-        self[NlcdAttributeType::SigmaPos] = value;
+        self[NlcdAttributeType::SigmaPos] = NlcdAttribute::Norms(value);
     }
     fn set_sigma_neg(&mut self, value: Vec<T>)
     {
-        self[NlcdAttributeType::SigmaNeg] = value;
+        self[NlcdAttributeType::SigmaNeg] = NlcdAttribute::Norms(value);
     }
     fn set_delta(&mut self, value: Vec<T>)
     {
-        self[NlcdAttributeType::Delta] = value;
+        self[NlcdAttributeType::Delta] = NlcdAttribute::Norms(value);
+    }
+    fn set_counterpart_count(&mut self, value: u32)
+    {
+        self[NlcdAttributeType::CounterpartCount] = NlcdAttribute::Count(value);
+    }
+    fn set_kappa(&mut self, value: T)
+    {
+        self[NlcdAttributeType::Kappa] = NlcdAttribute::Kappa(value);
     }
 }
 
@@ -65,45 +101,80 @@ pub trait NlcdTreeAttributes<U, T: Float+NumCast+Signed+Zero>: IndexMut<U, Outpu
 {
     fn get_sigma(&self, node_id: U)->Vec<T>
     {
-        self[node_id][NlcdAttributeType::Sigma].clone()
+        match &self[node_id][NlcdAttributeType::Sigma]{
+            NlcdAttribute::Norms(c) => c.clone(),
+            _ => panic!("Oops"),
+        }
     }
 
     fn get_sigma_pos(&self, node_id: U)->Vec<T>
     {
-        self[node_id][NlcdAttributeType::SigmaPos].clone()
+        match &self[node_id][NlcdAttributeType::SigmaPos]{
+            NlcdAttribute::Norms(c) => c.clone(),
+            _ => panic!("Oops"),
+        }
     }
 
     fn get_sigma_neg(&self, node_id: U)->Vec<T>
     {
-        self[node_id][NlcdAttributeType::SigmaNeg].clone()
+        match &self[node_id][NlcdAttributeType::SigmaNeg]{
+            NlcdAttribute::Norms(c) => c.clone(),
+            _ => panic!("Oops"),
+        }
     }
 
     fn get_delta(&self, node_id: U)->Vec<T>
     {
-        self[node_id][NlcdAttributeType::Delta].clone()
+        match &self[node_id][NlcdAttributeType::Delta]{
+            NlcdAttribute::Norms(c) => c.clone(),
+            _ => panic!("Oops"),
+        }
+    }
+
+    fn get_counterpart_count(&self, node_id: U)->u32
+    {
+        match &self[node_id][NlcdAttributeType::CounterpartCount]{
+            NlcdAttribute::Count(c) => c.clone(),
+            _ => panic!("Oops"),
+        }
+    }
+    fn get_kappa(&self, node_id: U)->T
+    {
+        match &self[node_id][NlcdAttributeType::Kappa]{
+            NlcdAttribute::Kappa(c) => c.clone(),
+            _ => panic!("Oops"),
+        }
     }
 
     
     fn set_sigma(&mut self, node_id: U, value: Vec<T>)
     {
-        self[node_id][NlcdAttributeType::Sigma] = value;
+        self[node_id][NlcdAttributeType::Sigma] = NlcdAttribute::Norms(value);
     }
 
     fn set_sigma_pos(&mut self, node_id: U, value: Vec<T>)
     {
-        self[node_id][NlcdAttributeType::SigmaPos] = value;
+        self[node_id][NlcdAttributeType::SigmaPos] = NlcdAttribute::Norms(value);
     }
 
     fn set_sigma_neg(&mut self, node_id: U, value: Vec<T>)
     {
-        self[node_id][NlcdAttributeType::SigmaNeg] = value;
+        self[node_id][NlcdAttributeType::SigmaNeg] = NlcdAttribute::Norms(value);
     }
 
     fn set_delta(&mut self, node_id: U, value: Vec<T>)
     {
-        self[node_id][NlcdAttributeType::Delta] = value;
+        self[node_id][NlcdAttributeType::Delta] = NlcdAttribute::Norms(value);
     }
 
+    fn set_counterpart_count(&mut self, node_id: U, value: u32)
+    {
+        self[node_id][NlcdAttributeType::CounterpartCount] = NlcdAttribute::Count(value);
+    }
+    fn set_kappa(&mut self, node_id: U, value: T)
+    {
+        self[node_id][NlcdAttributeType::Kappa] = NlcdAttribute::Kappa(value);
+    }
     
     fn reset_node(&mut self, node_id: U)
     {

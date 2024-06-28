@@ -2,32 +2,38 @@ pub mod near_linear_cophenetic_distance;
 
 use std::ops::{Index, IndexMut};
 
-use near_linear_cophenetic_distance::{NearLinearCopheneticDistance, NlcdNodeAttributes, NlcdTreeAttributes, NlcdAttributeType};
+use near_linear_cophenetic_distance::{NearLinearCopheneticDistance, NlcdNodeAttributes, NlcdTreeAttributes, NlcdAttributeType, NlcdAttribute};
 use phylo::prelude::*;
 use phylo::tree::SimpleRootedTree;
 
 #[derive(Debug, Clone)]
 pub struct NodeAttributes{
-    sigma: Vec<f32>,
-    sigma_pos: Vec<f32>,
-    sigma_neg: Vec<f32>,
-    delta: Vec<f32>,
+    sigma: NlcdAttribute<f32>,
+    sigma_pos: NlcdAttribute<f32>,
+    sigma_neg: NlcdAttribute<f32>,
+    delta: NlcdAttribute<f32>,
+    counterpart_count: NlcdAttribute<f32>,
+    kappa: NlcdAttribute<f32>,
+    norm: u32,
 }
 
 impl NodeAttributes{
     fn new(norm: u32)->NodeAttributes
     {
         NodeAttributes{
-            sigma: vec![0_f32; (norm as usize)+1],
-            sigma_pos: vec![0_f32; (norm as usize)+1],
-            sigma_neg: vec![0_f32; (norm as usize)+1],
-            delta: vec![0_f32; (norm as usize)+1],
+            sigma: NlcdAttribute::Norms(vec![0_f32; (norm as usize)+1]),
+            sigma_pos: NlcdAttribute::Norms(vec![0_f32; (norm as usize)+1]),
+            sigma_neg: NlcdAttribute::Norms(vec![0_f32; (norm as usize)+1]),
+            delta: NlcdAttribute::Norms(vec![0_f32; (norm as usize)+1]),
+            counterpart_count: NlcdAttribute::Count(0_u32),
+            kappa: NlcdAttribute::Kappa(0_f32),
+            norm: norm,
         }
     }
 }
 
 impl Index<NlcdAttributeType> for NodeAttributes{
-    type Output = Vec<f32>;
+    type Output = NlcdAttribute<f32>;
 
     fn index(&self, index: NlcdAttributeType) -> &Self::Output {
         match index{
@@ -35,6 +41,8 @@ impl Index<NlcdAttributeType> for NodeAttributes{
             NlcdAttributeType::SigmaPos => {&self.sigma_pos}
             NlcdAttributeType::SigmaNeg => {&self.sigma_neg}
             NlcdAttributeType::Delta => {&self.delta}
+            NlcdAttributeType::CounterpartCount => {&self.counterpart_count}
+            NlcdAttributeType::Kappa => {&self.kappa}
         }
     }
 }
@@ -46,24 +54,20 @@ impl IndexMut<NlcdAttributeType> for NodeAttributes{
             NlcdAttributeType::SigmaPos => {&mut self.sigma_pos}
             NlcdAttributeType::SigmaNeg => {&mut self.sigma_neg}
             NlcdAttributeType::Delta => {&mut self.delta}
+            NlcdAttributeType::CounterpartCount => {&mut self.counterpart_count}
+            NlcdAttributeType::Kappa => {&mut self.kappa}
         }
     }
 }
 
 impl NlcdNodeAttributes<f32> for NodeAttributes{
     fn reset(&mut self) {
-        for i in 0..self.sigma.len(){
-            self.sigma[i] = 0_f32;
-        }
-        for i in 0..self.sigma_pos.len(){
-            self.sigma_pos[i] = 0_f32;
-        }
-        for i in 0..self.sigma_neg.len(){
-            self.sigma_neg[i] = 0_f32;
-        }
-        for i in 0..self.delta.len(){
-            self.delta[i] = 0_f32;
-        }
+        self.set_sigma(vec![0_f32;(self.norm as usize)+1]);
+        self.set_sigma_pos(vec![0_f32;(self.norm as usize)+1]);
+        self.set_sigma_neg(vec![0_f32;(self.norm as usize)+1]);
+        self.set_delta(vec![0_f32;(self.norm as usize)+1]);
+        self.set_counterpart_count(0_u32);
+        self.set_kappa(0_f32);
     }
 }
 
