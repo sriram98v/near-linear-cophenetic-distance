@@ -370,7 +370,7 @@ where
         let binding2 = tree
             .get_taxa_space()
             .collect::<HashSet<<Self as CopheneticDistance>::Meta>>();
-        let taxa_set = binding1.intersection(&binding2).cloned().collect_vec();
+        let taxa_set: HashSet<_> = binding1.intersection(&binding2).collect();
 
         let mut self_node_attributes = self.tree_attributes(norm);
         let mut tree_node_attributes = tree.tree_attributes(norm);
@@ -378,7 +378,7 @@ where
         self.populate_op_vec(
             tree,
             norm,
-            taxa_set.as_slice(),
+            &taxa_set,
             &mut distances,
             &mut self_node_attributes,
             &mut tree_node_attributes,
@@ -404,7 +404,7 @@ where
         &self,
         tree: &Self,
         norm: u32,
-        taxa_set: &[<Self as RootedMetaTree>::Meta],
+        taxa_set: &HashSet<&<Self as RootedMetaTree>::Meta>,
         distances: &mut <<Self as RootedTree>::Node as RootedZetaNode>::Zeta,
         self_node_attributes: &mut impl NlcdTreeAttributes<
             <Self as RootedTree>::NodeID,
@@ -421,12 +421,14 @@ where
         let b: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(
             self.get_cluster(t)
                 .filter_map(|x| x.get_taxa())
-                .filter(|x| taxa_set.contains(x)),
+                .filter(|x| taxa_set.contains(x))
+                // .map(|x| &x)
         );
         let b_hat: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(
             tree.get_cluster(t_hat)
                 .filter_map(|x| x.get_taxa())
-                .filter(|x| taxa_set.contains(x)),
+                .filter(|x| taxa_set.contains(x))
+                // .map(|x| &x)
         );
 
         let a: HashSet<<Self as CopheneticDistance>::Meta> =
@@ -442,20 +444,20 @@ where
                 .cloned()
                 .collect();
 
-        let a_int_a_hat = a.intersection(&a_hat).cloned().collect_vec();
-        let a_int_b_hat = a.intersection(&b_hat).cloned().collect_vec();
-        let b_int_a_hat = b.intersection(&a_hat).cloned().collect_vec();
-        let b_int_b_hat = b.intersection(&b_hat).cloned().collect_vec();
+        let a_int_a_hat: HashSet<&<Self as CopheneticDistance>::Meta> = a.intersection(&a_hat).collect();
+        let a_int_b_hat: HashSet<&<Self as CopheneticDistance>::Meta> = a.intersection(&b_hat).collect();
+        let b_int_a_hat: HashSet<&<Self as CopheneticDistance>::Meta> = b.intersection(&a_hat).collect();
+        let b_int_b_hat: HashSet<&<Self as CopheneticDistance>::Meta> = b.intersection(&b_hat).collect();
 
         let double_mix_distance = self.distance_double_mix_type(
             tree,
             norm,
             &t,
             &t_hat,
-            a_int_a_hat.as_slice(),
-            a_int_b_hat.as_slice(),
-            b_int_a_hat.as_slice(),
-            b_int_b_hat.as_slice(),
+            &a_int_a_hat,
+            &a_int_b_hat,
+            &b_int_a_hat,
+            &b_int_b_hat,
         );
         let single_mix_distance = self.distance_single_mix_type(
             tree,
@@ -470,9 +472,6 @@ where
         );
 
         *distances = double_mix_distance+single_mix_distance;
-
-        // op_vec.push(double_mix_distance);
-        // op_vec.push(single_mix_distance);
 
         if taxa_set.len() > 2 {
             if a_int_a_hat.len() > 1 {
@@ -491,7 +490,7 @@ where
                 self_tree.populate_op_vec(
                     &new_tree,
                     norm,
-                    a_int_a_hat.as_slice(),
+                    &a_int_a_hat,
                     distances,
                     self_node_attributes,
                     tree_node_attributes,
@@ -514,7 +513,7 @@ where
                 self_tree.populate_op_vec(
                     &new_tree,
                     norm,
-                    a_int_b_hat.as_slice(),
+                    &a_int_b_hat,
                     distances,
                     self_node_attributes,
                     tree_node_attributes,
@@ -537,7 +536,7 @@ where
                 self_tree.populate_op_vec(
                     &new_tree,
                     norm,
-                    b_int_b_hat.as_slice(),
+                    &b_int_b_hat,
                     distances,
                     self_node_attributes,
                     tree_node_attributes,
@@ -560,7 +559,7 @@ where
                 self_tree.populate_op_vec(
                     &new_tree,
                     norm,
-                    b_int_a_hat.as_slice(),
+                    &b_int_a_hat,
                     distances,
                     self_node_attributes,
                     tree_node_attributes,
@@ -683,16 +682,17 @@ where
     /// that are present in different subtrees in both trees(raised to the p^{th} power).
     ///
     /// This includes the following assignments: AB|A'B', AB|B'A'
+    #[allow(clippy::too_many_arguments)]
     fn distance_double_mix_type(
         &self,
         tree: &Self,
         norm: u32,
         t: &<Self as RootedTree>::NodeID,
         t_hat: &<Self as RootedTree>::NodeID,
-        a_int_a_hat: &[<Self as CopheneticDistance>::Meta],
-        a_int_b_hat: &[<Self as CopheneticDistance>::Meta],
-        b_int_a_hat: &[<Self as CopheneticDistance>::Meta],
-        b_int_b_hat: &[<Self as CopheneticDistance>::Meta],
+        a_int_a_hat: &HashSet<&<Self as CopheneticDistance>::Meta>,
+        a_int_b_hat: &HashSet<&<Self as CopheneticDistance>::Meta>,
+        b_int_a_hat: &HashSet<&<Self as CopheneticDistance>::Meta>,
+        b_int_b_hat: &HashSet<&<Self as CopheneticDistance>::Meta>,
     ) -> <<Self as RootedTree>::Node as RootedZetaNode>::Zeta {
         let alpha = self.get_cntr(
             *t,
@@ -734,6 +734,7 @@ where
     /// that are present in the same subtree in exactly one of the two trees(raised to the p^{th} power).
     ///
     /// This includes the following assignments: AA|A'B', AA|B'A', BB|A'B', BB|B'A', BA|B'B', BA|A'A', AB|B'B', AB|A'A'.
+    #[allow(clippy::too_many_arguments)]
     fn distance_single_mix_type(
         &self,
         tree: &Self,
@@ -748,9 +749,9 @@ where
             <Self as RootedTree>::NodeID,
             <<Self as RootedTree>::Node as RootedZetaNode>::Zeta,
         >,
-        a_int_a_hat: &Vec<<Self as CopheneticDistance>::Meta>,
-        a_int_b_hat: &Vec<<Self as CopheneticDistance>::Meta>,
-        b_int_a_hat: &Vec<<Self as CopheneticDistance>::Meta>,
+        a_int_a_hat: &HashSet<&<Self as CopheneticDistance>::Meta>,
+        a_int_b_hat: &HashSet<&<Self as CopheneticDistance>::Meta>,
+        b_int_a_hat: &HashSet<&<Self as CopheneticDistance>::Meta>,
     ) -> <<Self as RootedTree>::Node as RootedZetaNode>::Zeta {
         if self.num_taxa() <= 2 {
             return <<<Self as RootedTree>::Node as RootedZetaNode>::Zeta>::zero();
@@ -803,6 +804,7 @@ where
         d1 + d2 + d3 + d4
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn preprocess_single_mix_even(
         t1: &Self,
         t2: &Self,
@@ -813,7 +815,7 @@ where
             <<Self as RootedTree>::Node as RootedZetaNode>::Zeta,
         >,
         norm: u32,
-        taxa_set: &[<Self as CopheneticDistance>::Meta],
+        taxa_set: &HashSet<&<Self as CopheneticDistance>::Meta>,
         upper_mixed: bool,
     ) {
         let leaf_iter = match upper_mixed {
@@ -840,6 +842,7 @@ where
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn preprocess_single_mix_odd(
         t1: &Self,
         t2: &Self,
@@ -850,7 +853,7 @@ where
             <<Self as RootedTree>::Node as RootedZetaNode>::Zeta,
         >,
         norm: u32,
-        taxa_set: &[<Self as CopheneticDistance>::Meta],
+        taxa_set: &HashSet<&<Self as CopheneticDistance>::Meta>,
         upper_mixed: bool,
     ) {
         let leaf_iter = match upper_mixed {
@@ -860,10 +863,10 @@ where
         for leaf in leaf_iter.iter() {
             match taxa_set.contains(&leaf) {
                 true => {
-                    let t2_node_id = t2.get_taxa_node_id(&leaf).unwrap();
+                    let t2_node_id = t2.get_taxa_node_id(leaf).unwrap();
                     let lca_x_t_hat = t2.get_lca_id(&vec![t2_node_id, *t2_median]);
                     let beta = t2.get_zeta(lca_x_t_hat).unwrap();
-                    let t1_node_id = t1.get_taxa_node_id(&leaf).unwrap();
+                    let t1_node_id = t1.get_taxa_node_id(leaf).unwrap();
 
                     let t1_node_parent_id = t1.get_node_parent_id(t1_node_id).unwrap();
 
@@ -905,7 +908,7 @@ where
                     }
                 }
                 false => {
-                    let node_id = t1.get_taxa_node_id(&leaf).unwrap();
+                    let node_id = t1.get_taxa_node_id(leaf).unwrap();
                     t1_node_attributes.increment_count(node_id);
                 }
             }
@@ -913,6 +916,7 @@ where
     }
 
     // this method solves AA|A'B'
+    #[allow(clippy::too_many_arguments)]
     fn single_mix_xxxy(
         t1: &Self,
         t2: &Self,
@@ -923,7 +927,7 @@ where
             <<Self as RootedTree>::Node as RootedZetaNode>::Zeta,
         >,
         norm: u32,
-        taxa_set: &[<Self as CopheneticDistance>::Meta],
+        taxa_set: &HashSet<&<Self as CopheneticDistance>::Meta>,
         upper_mixed: bool,
     ) -> <<Self as RootedTree>::Node as RootedZetaNode>::Zeta {
         let subtree_nodes = match upper_mixed {
