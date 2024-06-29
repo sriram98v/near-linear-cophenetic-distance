@@ -63,6 +63,15 @@ fn main() {
                         .value_parser(clap::value_parser!(String)),
                 ),
         )
+        .subcommand(
+            Command::new("test")
+                .arg(arg!(-k --norm <NORM> "nth norm").value_parser(clap::value_parser!(u32)))
+                .arg(
+                    arg!(-x --num_taxa <NUM_TAXA> "number of starting taxa")
+                        .required(true)
+                        .value_parser(clap::value_parser!(usize)),
+                )
+        )
         .about("CLI tool for quick tree operations")
         .get_matches();
 
@@ -129,7 +138,7 @@ fn main() {
                     .collect_vec()
             }
 
-            fn set_treeset_zeta(tree_set: &mut Vec<SimpleRootedTree>, zeta_type: &str) {
+            fn set_treeset_zeta(tree_set: &mut [SimpleRootedTree], zeta_type: &str) {
                 for tree in tree_set.iter_mut() {
                     match zeta_type {
                         "depth" => {
@@ -146,7 +155,7 @@ fn main() {
             }
 
             // Returns distribution of pairwise cophenetic distances for a set of trees
-            fn distance_distribution(tree_set: &Vec<SimpleRootedTree>, norm: u32) -> Vec<f32> {
+            fn distance_distribution(tree_set: &[SimpleRootedTree], norm: u32) -> Vec<f32> {
                 tree_set
                     .iter()
                     .combinations(2)
@@ -215,6 +224,48 @@ fn main() {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }
 
+            fn mean_runtime_naive(
+                trees: &[(SimpleRootedTree, SimpleRootedTree)],
+                num_iter: &u32,
+                norm: u32,
+            ) -> String {
+                trees
+                    .iter()
+                    .map(|(t1, t2)| {
+                        let mut total_runtime = Duration::from_secs(0);
+                        for _ in 0..*num_iter {
+                            let now = Instant::now();
+                            let _ = t1.cophen_dist_naive(t2, norm);
+                            total_runtime += now.elapsed();
+                        }
+                        total_runtime / *num_iter
+                    })
+                    .map(|x| format!("{}", x.as_millis()))
+                    .collect_vec()
+                    .join(",")
+            }
+
+            fn mean_runtime_nlcd(
+                trees: &[(SimpleRootedTree, SimpleRootedTree)],
+                num_iter: &u32,
+                norm: u32,
+            ) -> String {
+                trees
+                    .iter()
+                    .map(|(t1, t2)| {
+                        let mut total_runtime = Duration::from_secs(0);
+                        for _ in 0..*num_iter {
+                            let now = Instant::now();
+                            let _ = t1.cophen_dist(t2, norm);
+                            total_runtime += now.elapsed();
+                        }
+                        total_runtime / *num_iter
+                    })
+                    .map(|x| format!("{}", x.as_millis()))
+                    .collect_vec()
+                    .join(",")
+            }
+
             let norm = sub_m.get_one::<u32>("norm").expect("required");
             let num_start_taxa = sub_m.get_one::<usize>("num_start_taxa").expect("required");
             let step_size = sub_m.get_one::<usize>("step_size").expect("required");
@@ -226,7 +277,7 @@ fn main() {
                 File::create(sub_m.get_one::<String>("out_file").expect("required")).unwrap();
 
             // Generating trees
-            let trees = (*num_start_taxa..num_end_taxa)
+            let trees: Vec<(SimpleRootedTree, SimpleRootedTree)> = (*num_start_taxa..num_end_taxa)
                 .step_by(*step_size)
                 .map(|x| {
                     dbg!(&x);
@@ -240,49 +291,54 @@ fn main() {
                 })
                 .collect_vec();
 
-            let mean_runtimes_naive = trees
-                .iter()
-                .map(|(t1, t2)| {
-                    let mut total_runtime = Duration::from_secs(0);
-                    for _ in 0..*num_iter {
-                        let now = Instant::now();
-                        let _ = t1.cophen_dist_naive(t2, *norm);
-                        total_runtime += now.elapsed();
-                    }
-                    total_runtime / *num_iter
-                })
-                .map(|x| format!("{}", x.as_millis()))
-                .collect_vec()
-                .join(", ");
+            // let mut run_times: Vec<String> = vec![];
+            for i in 1..norm+1{
+                println!("Computing distance for norm={i}");
+                let naive = format!("naive_{}:{}", i, mean_runtime_naive(&trees, num_iter, i));
+                let nlcd = format!("nlcd_{}:{}", i, mean_runtime_nlcd(&trees, num_iter, i));
+                // run_times.push(naive);
+                // run_times.push(nlcd);
+                output_file
+                    .write_all(
+                    [naive, nlcd]
+                            .join("\n")
+                            .as_bytes(),
+                    )
+                    .unwrap();
+            }
 
-            let mean_runtimes_nlcd = trees
-                .iter()
-                .map(|(t1, t2)| {
-                    let mut total_runtime = Duration::from_secs(0);
-                    for _ in 0..*num_iter {
-                        let now = Instant::now();
-                        let _ = t1.cophen_dist(t2, *norm);
-                        total_runtime += now.elapsed();
-                    }
-                    total_runtime / *num_iter
-                })
-                .map(|x| format!("{}", x.as_millis()))
-                .collect_vec()
-                .join(",");
+            // for line in run_times.chunks(2){
+            //     println!("{:?}\n{:?}\n\n", line[0], line[1]);
+            // }
 
-            println!("{}", mean_runtimes_naive);
-            println!("{}", mean_runtimes_nlcd);
+            // output_file
+            //     .write_all(
+            //     run_times
+            //             .join("\n")
+            //             .as_bytes(),
+            //     )
+            //     .unwrap();
+        }
 
-            output_file
-                .write_all(
-                    [
-                        format!("Naive:{}", mean_runtimes_naive),
-                        format!("NLCD:{}", mean_runtimes_nlcd),
-                    ]
-                    .join("\n")
-                    .as_bytes(),
-                )
-                .unwrap();
+        Some(("test", sub_m)) => {
+            fn depth(
+                tree: &SimpleRootedTree,
+                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+            ) -> f32 {
+                EulerWalk::get_node_depth(tree, node_id) as f32
+            }
+
+            let norm = sub_m.get_one::<u32>("norm").expect("required");
+            let x = sub_m.get_one::<usize>("num_taxa").expect("required");
+
+            let mut t1 = SimpleRootedTree::yule(*x).unwrap();
+            let mut t2 = SimpleRootedTree::yule(*x).unwrap();
+            t1.precompute_constant_time_lca();
+            t2.precompute_constant_time_lca();
+            t1.set_zeta(depth);
+            t2.set_zeta(depth);
+
+            println!("{}", t1.cophen_dist(&t2, *norm));
         }
         _ => {
             println!("No option selected! Refer help page (-h flag)");
