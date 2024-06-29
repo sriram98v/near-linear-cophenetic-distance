@@ -21,10 +21,21 @@ cargo install --path=./
 ```
 
 ## Usage
-### Reproduce results
+### Finding the Cophenetic distance between a pair of trees
+To compute the cophenetic distance between a pair of trees, please create a single file with the extension ```.tre``` containing the two trees in Newick format (line-separated). The run the following command to compute the cophenetic distance with depth as the path function:
+```bash
+nlcd -f <PATH TO .TRE FILE> -p <NORM>
+```
+
+Please refer the help page for details on how to use other path functions using:
+```bash
+nlcd -h
+```
+
+### Reproduce empirical results
 In order to reproduce the results as seen in the article, run the following command
 ```bash
-nlcd repr -n 1000 -x 100 -k 10 -t 1 -o ./emp-study
+nlcd repr-emp -n 1000 -x 100 -k 10 -t 1 -o ./emp-study
 ```
 
 In order to plot the results, create a local python virtual environment and install the dependencies using the following commands:
@@ -39,13 +50,21 @@ The command above will create a file containing the distributions as seen in the
 ./scripts/plot-distribs.py
 ```
 
-### Finding the Cophenetic distance between a pair of trees
-To compute the cophenetic distance between a pair of trees, please create a single file with the extension ```.tre``` containing the two trees in Newick format (line-separated). The run the following command to compute the cophenetic distance with depth as the path function:
+### Reproduce scalability analysis
+**Note: Reproduction of these results may not looked identical to that in the aritcle**
+In order to reproduce the scalability analysis as seen in the article, run the following command
 ```bash
-nlcd -f <PATH TO .TRE FILE> -p <NORM>
+nlcd repr-sca -s 200 -e 10000 -x 200 -i 20 -k 5 -o ./sca-study
 ```
 
-Please refer the help page for details on how to use other path functions using:
+In order to plot the results, create a local python virtual environment and install the dependencies using the following commands:
 ```bash
-nlcd -h
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+The command above will create a file containing the distributions as seen in the Results section of the article. In order to reproduce the plots, please run the python script provided in the ```scripts``` directory as follows (run from the base of the repository):
+```bash
+./scripts/plot-sca.py
 ```
