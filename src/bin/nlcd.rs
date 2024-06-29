@@ -295,7 +295,7 @@ fn main() {
             for i in 1..norm+1{
                 println!("Computing distance for norm={i}");
                 let naive = format!("naive_{}:{}", i, mean_runtime_naive(&trees, num_iter, i));
-                let nlcd = format!("nlcd_{}:{}", i, mean_runtime_nlcd(&trees, num_iter, i));
+                let nlcd = format!("nlcd_{}:{}\n", i, mean_runtime_nlcd(&trees, num_iter, i));
                 // run_times.push(naive);
                 // run_times.push(nlcd);
                 output_file
