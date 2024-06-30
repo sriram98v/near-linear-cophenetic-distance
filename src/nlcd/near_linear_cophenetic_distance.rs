@@ -471,7 +471,7 @@ where
             &b_int_a_hat,
         );
 
-        *distances = double_mix_distance+single_mix_distance;
+        *distances = *distances + double_mix_distance+single_mix_distance;
 
         if taxa_set.len() > 2 {
             if a_int_a_hat.len() > 1 {
