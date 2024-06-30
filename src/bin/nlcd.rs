@@ -1,4 +1,5 @@
 use clap::{arg, Command};
+use std::fs;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use nlcd::nlcd::near_linear_cophenetic_distance::NearLinearCopheneticDistance;
@@ -72,8 +73,22 @@ fn main() {
                         .value_parser(clap::value_parser!(usize)),
                 )
         )
+        .subcommand(
+            Command::new("dist")
+                .arg(
+                    arg!(-k --norm <NORM> "nth norm")
+                        .required(true)
+                        .value_parser(clap::value_parser!(u32))
+                )
+                .arg(
+                    arg!(-i --input_file <FILE_PATH> "Input tree file in Newick format")
+                        .required(true)
+                        .value_parser(clap::value_parser!(String)),
+                )
+        )
         .about("CLI tool for quick tree operations")
         .get_matches();
+    
 
     match matches.subcommand() {
         Some(("repr-emp", sub_m)) => {
@@ -341,6 +356,33 @@ fn main() {
             }
 
             println!("Nlcd: {:?}", (total_runtime / 20).as_secs());
+        }
+        Some(("dist", sub_m)) => {
+            fn depth(
+                tree: &SimpleRootedTree,
+                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+            ) -> f32 {
+                EulerWalk::get_node_depth(tree, node_id) as f32
+            }
+
+            let norm = sub_m.get_one::<u32>("norm").expect("required");
+            let input_file = matches.get_one::<String>("input_file").expect("tree-file argument required");
+
+                let contents = fs::read_to_string(input_file)
+                    .expect("Should have been able to read the file");
+
+                let tree_strings = contents.split("\n").collect_vec();
+
+                let mut t1 = SimpleRootedTree::from_newick(tree_strings[0].as_bytes());
+                let mut t2 = SimpleRootedTree::from_newick(tree_strings[1].as_bytes());
+
+                t1.precompute_constant_time_lca();
+                t2.precompute_constant_time_lca();
+
+                t1.set_zeta(depth);
+                t2.set_zeta(depth);
+
+                println!("Norm: {}, Cophenetic-distance: {}", norm, t1.cophen_dist_naive(&t2, *norm));
         }
         _ => {
             println!("No option selected! Refer help page (-h flag)");
