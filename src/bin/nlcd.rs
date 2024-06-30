@@ -16,7 +16,7 @@ fn main() {
         .subcommand(
             Command::new("repr-emp")
                 .about("Reproduce empirical results from article")
-                .arg(arg!(-k --norm <NORM> "nth norm").value_parser(clap::value_parser!(u32)))
+                .arg(arg!(-k --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
                 .arg(
                     arg!(-n --num_trees <NUM_TREES> "number of trees")
                         .required(true)
@@ -36,7 +36,7 @@ fn main() {
         .subcommand(
             Command::new("repr-sca")
                 .about("Reproduce scalability results from article")
-                .arg(arg!(-k --norm <NORM> "nth norm").value_parser(clap::value_parser!(u32)))
+                .arg(arg!(-k --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
                 .arg(
                     arg!(-s --num_start_taxa <NUM_START_TAXA> "number of starting taxa")
                         .required(true)
@@ -65,7 +65,7 @@ fn main() {
         )
         .subcommand(
             Command::new("test")
-                .arg(arg!(-k --norm <NORM> "nth norm").value_parser(clap::value_parser!(u32)))
+                .arg(arg!(-k --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
                 .arg(
                     arg!(-x --num_taxa <NUM_TAXA> "number of starting taxa")
                         .required(true)
@@ -291,13 +291,10 @@ fn main() {
                 })
                 .collect_vec();
 
-            // let mut run_times: Vec<String> = vec![];
             for i in 1..norm+1{
                 println!("Computing distance for norm={i}");
                 let naive = format!("naive_{}:{}", i, mean_runtime_naive(&trees, num_iter, i));
                 let nlcd = format!("nlcd_{}:{}\n", i, mean_runtime_nlcd(&trees, num_iter, i));
-                // run_times.push(naive);
-                // run_times.push(nlcd);
                 output_file
                     .write_all(
                     [naive, nlcd]
@@ -307,17 +304,6 @@ fn main() {
                     .unwrap();
             }
 
-            // for line in run_times.chunks(2){
-            //     println!("{:?}\n{:?}\n\n", line[0], line[1]);
-            // }
-
-            // output_file
-            //     .write_all(
-            //     run_times
-            //             .join("\n")
-            //             .as_bytes(),
-            //     )
-            //     .unwrap();
         }
 
         Some(("test", sub_m)) => {
@@ -338,7 +324,23 @@ fn main() {
             t1.set_zeta(depth);
             t2.set_zeta(depth);
 
-            println!("{}", t1.cophen_dist(&t2, *norm));
+            let mut total_runtime = Duration::from_secs(0);
+            for _ in 0..20 {
+                let now = Instant::now();
+                let _ = t1.cophen_dist_naive(&t2, *norm);
+                total_runtime += now.elapsed();
+            }
+
+            println!("Naive: {:?}", (total_runtime / 20).as_secs());
+
+            let mut total_runtime = Duration::from_secs(0);
+            for _ in 0..20 {
+                let now = Instant::now();
+                let _ = t1.cophen_dist(&t2, *norm);
+                total_runtime += now.elapsed();
+            }
+
+            println!("Nlcd: {:?}", (total_runtime / 20).as_secs());
         }
         _ => {
             println!("No option selected! Refer help page (-h flag)");
