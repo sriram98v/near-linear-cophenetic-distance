@@ -239,6 +239,12 @@ fn main() {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }
 
+            fn median(numbers: &mut [Duration]) -> Duration {
+                numbers.sort();
+                let mid = numbers.len() / 2;
+                numbers[mid]
+            }            
+
             fn mean_runtime_naive(
                 trees: &[(SimpleRootedTree, SimpleRootedTree)],
                 num_iter: &u32,
@@ -247,13 +253,13 @@ fn main() {
                 trees
                     .iter()
                     .map(|(t1, t2)| {
-                        let mut total_runtime = Duration::from_secs(0);
+                        let mut total_runtime = vec![];
                         for _ in 0..*num_iter {
                             let now = Instant::now();
                             let _ = t1.cophen_dist_naive(t2, norm);
-                            total_runtime += now.elapsed();
+                            total_runtime.push(now.elapsed());
                         }
-                        total_runtime / *num_iter
+                        median(total_runtime.as_mut())
                     })
                     .map(|x| format!("{}", x.as_millis()))
                     .collect_vec()
@@ -268,13 +274,13 @@ fn main() {
                 trees
                     .iter()
                     .map(|(t1, t2)| {
-                        let mut total_runtime = Duration::from_secs(0);
+                        let mut total_runtime = vec![];
                         for _ in 0..*num_iter {
                             let now = Instant::now();
                             let _ = t1.cophen_dist(t2, norm);
-                            total_runtime += now.elapsed();
+                            total_runtime.push(now.elapsed());
                         }
-                        total_runtime / *num_iter
+                        median(total_runtime.as_mut())
                     })
                     .map(|x| format!("{}", x.as_millis()))
                     .collect_vec()
