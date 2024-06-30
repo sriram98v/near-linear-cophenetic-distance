@@ -17,7 +17,7 @@ fn main() {
         .subcommand(
             Command::new("repr-emp")
                 .about("Reproduce empirical results from article")
-                .arg(arg!(-k --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
+                .arg(arg!(-p --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
                 .arg(
                     arg!(-n --num_trees <NUM_TREES> "number of trees")
                         .required(true)
@@ -37,7 +37,7 @@ fn main() {
         .subcommand(
             Command::new("repr-sca")
                 .about("Reproduce scalability results from article")
-                .arg(arg!(-k --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
+                .arg(arg!(-p --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
                 .arg(
                     arg!(-s --num_start_taxa <NUM_START_TAXA> "number of starting taxa")
                         .required(true)
@@ -66,7 +66,7 @@ fn main() {
         )
         .subcommand(
             Command::new("test")
-                .arg(arg!(-k --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
+                .arg(arg!(-p --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
                 .arg(
                     arg!(-x --num_taxa <NUM_TAXA> "number of starting taxa")
                         .required(true)
@@ -76,7 +76,7 @@ fn main() {
         .subcommand(
             Command::new("dist")
                 .arg(
-                    arg!(-k --norm <NORM> "nth norm")
+                    arg!(-p --norm <NORM> "nth norm")
                         .required(true)
                         .value_parser(clap::value_parser!(u32))
                 )
