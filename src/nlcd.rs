@@ -2,6 +2,7 @@ pub mod near_linear_cophenetic_distance;
 
 use std::ops::{Index, IndexMut};
 
+use fxhash::FxHashMap as HashMap;
 use near_linear_cophenetic_distance::{
     NearLinearCopheneticDistance, NlcdAttribute, NlcdAttributeType, NlcdNodeAttributes,
     NlcdTreeAttributes,
@@ -64,15 +65,18 @@ impl NlcdNodeAttributes<f32> for NodeAttributes {}
 
 #[derive(Debug)]
 pub struct TreeNodeAttributes {
-    attr: Vec<NodeAttributes>,
+    attr: HashMap<usize, NodeAttributes>,
 }
 
 impl TreeNodeAttributes {
     fn new(tree: &SimpleRootedTree, norm: u32) -> TreeNodeAttributes {
-        let max_id = tree.get_node_ids().max().unwrap();
         TreeNodeAttributes {
-            attr: vec![NodeAttributes::new(norm); max_id + 1],
+            attr: tree.get_nodes().map(|x| (x.get_id(), NodeAttributes::new(norm))).collect(),
         }
+        // let max_id = tree.get_node_ids().max().unwrap();
+        // TreeNodeAttributes {
+        //     attr: vec![NodeAttributes::new(norm); max_id + 1],
+        // }
     }
 }
 
@@ -80,13 +84,15 @@ impl Index<<SimpleRootedTree as RootedTree>::NodeID> for TreeNodeAttributes {
     type Output = NodeAttributes;
 
     fn index(&self, index: <SimpleRootedTree as RootedTree>::NodeID) -> &Self::Output {
-        &self.attr[index]
+        self.attr.get(&index).unwrap()
+        // &self.attr[index]
     }
 }
 
 impl IndexMut<<SimpleRootedTree as RootedTree>::NodeID> for TreeNodeAttributes {
     fn index_mut(&mut self, index: <SimpleRootedTree as RootedTree>::NodeID) -> &mut Self::Output {
-        &mut self.attr[index]
+        self.attr.get_mut(&index).unwrap()
+        // &mut self.attr[index]
     }
 }
 
