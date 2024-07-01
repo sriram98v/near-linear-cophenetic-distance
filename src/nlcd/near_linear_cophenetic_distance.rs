@@ -418,6 +418,9 @@ where
         let t = self.get_median_node_id();
         let t_hat = tree.get_median_node_id();
 
+        let self_postord_node_ids = self.postord(self.get_root_id()).map(|x| x.get_id()).collect_vec();
+        let tree_postord_node_ids = tree.postord(tree.get_root_id()).map(|x| x.get_id()).collect_vec();
+
         let b: HashSet<<Self as CopheneticDistance>::Meta> = HashSet::from_iter(
             self.get_cluster(t)
                 .filter_map(|x| x.get_taxa())
@@ -464,6 +467,8 @@ where
             norm,
             &t,
             &t_hat,
+            self_postord_node_ids.as_slice(),
+            tree_postord_node_ids.as_slice(),
             self_node_attributes,
             tree_node_attributes,
             &a_int_a_hat,
@@ -741,6 +746,8 @@ where
         norm: u32,
         t: &<Self as RootedTree>::NodeID,
         t_hat: &<Self as RootedTree>::NodeID,
+        self_postord_node_ids: &[Self::NodeID],
+        tree_postord_node_ids: &[Self::NodeID],
         self_node_attributes: &mut impl NlcdTreeAttributes<
             <Self as RootedTree>::NodeID,
             <<Self as RootedTree>::Node as RootedZetaNode>::Zeta,
@@ -763,6 +770,7 @@ where
             t,
             t_hat,
             self_node_attributes,
+            self_postord_node_ids,
             norm,
             a_int_a_hat,
             true,
@@ -774,6 +782,7 @@ where
             t_hat,
             t,
             tree_node_attributes,
+            tree_postord_node_ids,
             norm,
             a_int_a_hat,
             true,
@@ -785,6 +794,7 @@ where
             t,
             t_hat,
             self_node_attributes,
+            self_postord_node_ids,
             norm,
             b_int_a_hat,
             false,
@@ -796,6 +806,7 @@ where
             t_hat,
             t,
             tree_node_attributes,
+            tree_postord_node_ids,
             norm,
             a_int_b_hat,
             false,
@@ -926,24 +937,26 @@ where
             <Self as RootedTree>::NodeID,
             <<Self as RootedTree>::Node as RootedZetaNode>::Zeta,
         >,
+        t1_postord_node_ids: &[Self::NodeID],
         norm: u32,
         taxa_set: &HashSet<&<Self as CopheneticDistance>::Meta>,
         upper_mixed: bool,
     ) -> <<Self as RootedTree>::Node as RootedZetaNode>::Zeta {
         let subtree_nodes = match upper_mixed {
             true => {
-                let lower_tree_nodes = t1.postord(*t1_median).map(|x| x.get_id()).collect_vec();
-                t1.postord(t1.get_root_id())
-                    .map(|x| x.get_id())
+                let lower_tree_nodes: HashSet<_> = t1.postord(*t1_median).map(|x| x.get_id()).collect();
+                t1_postord_node_ids.iter()
                     .filter(|x| !lower_tree_nodes.contains(x))
+                    .map(|x| x.clone())
                     .collect_vec()
             }
             false => t1.postord(*t1_median).map(|x| x.get_id()).collect_vec(),
         };
 
         // resetting all node attributes
-        t1.get_node_ids()
-            .for_each(|node_id| t1_node_attributes.reset_node(node_id));
+        t1_postord_node_ids
+            .iter()
+            .for_each(|node_id| t1_node_attributes.reset_node(*node_id));
 
         match norm % 2 {
             0 => {
