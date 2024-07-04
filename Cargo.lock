@@ -387,7 +387,7 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 [[package]]
 name = "phylo"
 version = "0.1.0"
-source = "git+https://github.com/sriram98v/phylo-rs#4f41a66db5eed562a082b766b35d6ea904f59068"
+source = "git+https://github.com/sriram98v/phylo-rs#b6f25ad80de352e2231dd5835789b2517eb147bd"
 dependencies = [
  "anyhow",
  "fxhash",
