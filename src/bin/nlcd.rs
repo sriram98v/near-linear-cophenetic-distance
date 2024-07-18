@@ -95,7 +95,7 @@ fn main() {
             // Returns node depth
             fn depth(
                 tree: &SimpleRootedTree,
-                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+                node_id:  <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID,
             ) -> f32 {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }
@@ -103,7 +103,7 @@ fn main() {
             // Returns node cluster size
             fn size(
                 tree: &SimpleRootedTree,
-                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+                node_id:  <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID,
             ) -> f32 {
                 tree.get_cluster_size(node_id) as f32
             }
@@ -111,11 +111,11 @@ fn main() {
             // Sets zeta to be node heights
             fn set_node_heights(tree: &mut SimpleRootedTree) {
                 let node_post_ord = tree
-                    .postord(tree.get_root_id())
-                    .map(|x| x.get_id())
+                    .postord_ids(tree.get_root_id())
+                    // .map(|x| x.get_id())
                     .collect_vec();
                 for node_id in node_post_ord {
-                    match tree.is_leaf(&node_id) {
+                    match tree.is_leaf(node_id) {
                         true => tree.get_node_mut(node_id).unwrap().set_zeta(Some(0_f32)),
                         false => {
                             let max_height = tree
@@ -234,7 +234,7 @@ fn main() {
         Some(("repr-sca", sub_m)) => {
             fn depth(
                 tree: &SimpleRootedTree,
-                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+                node_id:  <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID,
             ) -> f32 {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }
@@ -330,7 +330,7 @@ fn main() {
         Some(("test", sub_m)) => {
             fn depth(
                 tree: &SimpleRootedTree,
-                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+                node_id:  <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID,
             ) -> f32 {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }
@@ -366,7 +366,7 @@ fn main() {
         Some(("dist", sub_m)) => {
             fn depth(
                 tree: &SimpleRootedTree,
-                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+                node_id:  <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID,
             ) -> f32 {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }

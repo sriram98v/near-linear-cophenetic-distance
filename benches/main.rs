@@ -16,7 +16,7 @@ fn benchmark_nlcd(bencher: divan::Bencher) {
         .with_inputs(|| {
             fn depth(
                 tree: &SimpleRootedTree,
-                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+                node_id:  <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID,
             ) -> f32 {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }
@@ -40,7 +40,7 @@ fn benchmark_naive(bencher: divan::Bencher) {
         .with_inputs(|| {
             fn depth(
                 tree: &SimpleRootedTree,
-                node_id: <SimpleRootedTree as RootedTree>::NodeID,
+                node_id:  <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID,
             ) -> f32 {
                 EulerWalk::get_node_depth(tree, node_id) as f32
             }

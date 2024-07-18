@@ -1,5 +1,6 @@
 use nlcd::nlcd::near_linear_cophenetic_distance::NearLinearCopheneticDistance;
 use phylo::iter::node_iter::{Ancestors, EulerWalk};
+use phylo::prelude::*;
 use phylo::tree::distances::PathFunction;
 use phylo::tree::ops::CopheneticDistance;
 use phylo::tree::{simple_rtree::RootedTree, SimpleRootedTree};
@@ -8,7 +9,7 @@ use phylo::tree::{simple_rtree::RootedTree, SimpleRootedTree};
 fn cophenetic_dist() {
     let norm = 2;
 
-    fn depth(tree: &SimpleRootedTree, node_id: <SimpleRootedTree as RootedTree>::NodeID)->f32
+    fn depth(tree: &SimpleRootedTree, node_id: <<SimpleRootedTree as RootedTree>::Node as RootedTreeNode>::NodeID)->f32
     {
         tree.depth(node_id) as f32
     }
