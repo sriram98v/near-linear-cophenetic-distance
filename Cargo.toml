@@ -10,7 +10,7 @@ rust-version = "1.79.0"
 fxhash = "0.2.1"
 itertools = "0.13.0"
 num = "0.4.3"
-phylo = { git = "https://github.com/sriram98v/phylo-rs", version = "0.1.0" }
+phylo = "0.1.1"
 rayon = "1.10.0"
 rand = "0.8.5"
 indicatif = "0.17.8"
