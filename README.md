@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/816474443.svg)](https://zenodo.org/doi/10.5281/zenodo.13386029)
+
 # Near Linear Cophenetic Distance
 This repository contains a rust crate to compute the cophenetic distance between two rooted phylogenetic trees in near-linear time.
 
