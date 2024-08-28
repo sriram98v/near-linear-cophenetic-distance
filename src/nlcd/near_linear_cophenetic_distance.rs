@@ -358,8 +358,6 @@ where
         tree: &'a Self,
         norm: u32,
     ) -> TreeNodeZeta<'a, Self> {
-        // let mut ops: Vec<TreeNodeZeta<'a, Self>> = vec![];
-
         let mut distances: TreeNodeZeta<'a, Self> = <TreeNodeZeta<'a, Self>>::zero();
 
         let binding1 = self

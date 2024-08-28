@@ -1,0 +1,18 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: nlcd
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Sriram
+    family-names: Vijendran
+    email: vijendran.sriram@gmail.com
+    orcid: 'https://orcid.org/0000-0002-8417-3675'
+    affiliation: Iowa State University
+repository-code: 'https://github.com/sriram98v/Generalized-PD'
+url: 'https://github.com/sriram98v/Generalized-PD'
+license: MIT
