@@ -64,10 +64,11 @@ fn pascal() {
 
     let pt = DemoTree::pascal_triangle(norm);
 
-    for n in 0..norm+1{
-        for k in 0..n{
-            assert_eq!(pt[n as usize][k as usize], DemoTree::n_choose_k(n, k) as u32);
-        }
+    dbg!(&pt);
+
+    for k in 0..norm+1{
+        dbg!(k);
+        assert_eq!(pt[k as usize], DemoTree::n_choose_k(norm, k) as u32);
     }
 
 }
