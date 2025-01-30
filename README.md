@@ -27,44 +27,70 @@ To compute the cophenetic distance between a pair of trees, please create a sing
 nlcd dist -i <PATH TO .TRE FILE> -p <NORM>
 ```
 
-Please refer the help page for details on how to use other path functions using:
+### Examples
+An example input file can be found in the ```EXAMPLES``` directory. This file contains a pair of edge-weight phylogenetic trees over the same taxa. Below are the flags that can be used:
+
 ```bash
-nlcd -h
+Usage: nlcd dist --norm <NORM> --input_file <FILE_PATH> --method <METHOD> --weighted <WEIGHTED>
+
+Options:
+  -p, --norm <NORM>             nth norm
+  -i, --input_file <FILE_PATH>  Input tree file in Newick format
+  -m, --method <METHOD>         One of size, depth, or height [default: depth]
+  -w, --weighted <WEIGHTED>     Use edge weights [default: false] [possible values: true, false]
+  -h, --help                    Print help
+```
+To compute the cophenetic distance between the trees taking only topology into account, set weighted to false, which will set all edge-weights to 1. When method is set to ```depth```, the depth of the vertex will be computed as the sum of all the edge-weights in the path from the vertex to the root. Similarly, When method is set to ```height```, the height of a vertex will be computed as the sum of all the edge-weights in the path from the vertex to the closest leaf. When method is set to ```size```, the size of the vertex will be computed as the number of leaves in the subtree rooted at that vertex.
+
+For example, the following command computes the distance between the pair of example trees by comparing the depth of the vertices under the first norm.
+```bash
+nlcd dist -i ./EXAMPLES/trees.nwk -p 1 -m depth -w false
 ```
 
-### Reproduce empirical results
-In order to reproduce the results as seen in the article, run the following command
+Similarly, the following command computes the distance between the pair of example trees by comparing the weighted distances of the vertices from the root vertex under the first norm.
 ```bash
-nlcd repr-emp -n 1000 -x 100 -p 10 -t 1 -o ./emp-study
+nlcd dist -i ./EXAMPLES/trees.nwk -p 1 -m depth -w true
 ```
 
-In order to plot the results, create a local python virtual environment and install the dependencies using the following commands:
+### Reproduce empirical distributions
+In order to produce the distribution of cophenetic distances under norm ```NORM``` for a set of trees of size ```N_TREES``` with ```N_TAXA``` taxa, run
+
+```bash
+nlcd repr-emp -n <N_TREES> -x <N_TAXA> -p <NORM> -o ./emp-study
+```
+
+The command above will create a file containing the distributions pairwise distances for trees simulated under the Yule and Uniform evolutionary models. 
+
+To vislualize the distributions, first create a local python virtual environment and install the dependencies using the following commands:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The command above will create a file containing the distributions as seen in the Results section of the article. In order to reproduce the plots, please run the python script provided in the ```scripts``` directory as follows (run from the base of the repository):
+Then run the python script provided in the ```scripts``` directory as follows (run from the base of the repository):
 ```bash
 ./scripts/plot-distribs.py
 ```
 
+
 ### Reproduce scalability analysis
-**Note: Reproduction of these results may not looked identical to that in the aritcle**
-In order to reproduce the scalability analysis as seen in the article, run the following command
+In order to reproduce the scalability analysis under norm ```NORM``` for a set of trees of size ```N_TREES``` with ```N_TAXA``` taxa, run
+
 ```bash
-nlcd repr-sca -s 200 -e 10000 -x 200 -i 20 -p 5 -o ./sca-study
+nlcd repr-sca -i <N_TREES> -n <N_TAXA> -p <NORM> -o ./sca-study
 ```
 
-In order to plot the results, create a local python virtual environment and install the dependencies using the following commands:
+The command above will create a file containing the runtimes of the naive and near-linear algorithm. 
+
+To vislualize the distributions, first create a local python virtual environment and install the dependencies using the following commands:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The command above will create a file containing the distributions as seen in the Results section of the article. In order to reproduce the plots, please run the python script provided in the ```scripts``` directory as follows (run from the base of the repository):
+Then run the python script provided in the ```scripts``` directory as follows (run from the base of the repository):
 ```bash
 ./scripts/plot-sca.py
 ```
