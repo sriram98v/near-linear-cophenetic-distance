@@ -364,15 +364,13 @@ where
     }
 
     /// Returns pascal triangle for precomputed binomial terms
-    fn pascal_triangle(norm: u32)->Vec<Vec<u32>>{
-        let mut pt = vec![vec![0;norm as usize+1]; norm as usize+1];
-        pt[0][0]=1;
+    fn pascal_triangle(norm: u32)->Vec<u32>{
+        let mut pt = vec![0_u32;norm as usize+1];
+        pt[0]=1;
         for n in 1..norm as usize+1{
-            pt[n][0] = 1;
-            pt[n][n] = 1;
-            for k in 1..n{
-                let n_choose_k = pt[n-1][k-1]+pt[n-1][k];
-                pt[n][k] = n_choose_k;
+            match n <= (norm as f32 / 2_f32) as usize{
+                true => pt[n] = ((pt[n-1] as f32)*((norm as usize-n+1) as f32/(n as f32))) as u32,
+                false => pt[n] = pt[norm as usize - n],
             }
         }
         pt
@@ -604,7 +602,7 @@ where
         tree_lower_postord_node_ids: Vec<TreeNodeID<Self>>,
         tree_upper_postord_node_ids: Vec<TreeNodeID<Self>>,
         taxa_map_rev: HashMap<usize,TreeNodeMeta<Self>>,
-        pascal_triangle: &Vec<Vec<u32>>,
+        pascal_triangle: &Vec<u32>,
         norm: u32,
         taxa_set: &HashSet<TreeNodeMeta<Self>>,
         distances: &mut TreeNodeZeta<Self>,
@@ -741,7 +739,7 @@ where
     fn seq_product(
         mut alpha: Vec<TreeNodeZeta<Self>>,
         mut beta: Vec<TreeNodeZeta<Self>>,
-        pascal_triangle: &Vec<Vec<u32>>,
+        pascal_triangle: &Vec<u32>,
         norm: u32,
     ) -> TreeNodeZeta<Self> {
         if alpha.is_empty() || beta.is_empty() {
@@ -761,7 +759,7 @@ where
 
         let final_out = (0..beta.len()).map(|j| {
             let term_1 = (0..norm+1).map(|l| {
-                let t1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[norm as usize][l as usize]).unwrap();
+                let t1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[l as usize]).unwrap();
                 let t2 = beta[j].powi(l as i32);
                 let t3 = <TreeNodeZeta<Self> as NumCast>::from((-1_i32).pow(norm-l)).unwrap();
                 let t4 = sigma[j][(norm-l) as usize];
@@ -769,7 +767,7 @@ where
             }).sum::<TreeNodeZeta<Self>>();
 
             let term_2 = (0..norm+1).map(|l| {
-                let t1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[norm as usize][l as usize]).unwrap();
+                let t1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[l as usize]).unwrap();
                 let t2 = beta[j].powi((norm-l) as i32);
                 let t3 = <TreeNodeZeta<Self> as NumCast>::from((-1_i32).pow(norm-l)).unwrap();
                 let t4 = sigma[beta.len()-1][l as usize]-sigma[j][l as usize];
@@ -825,7 +823,7 @@ where
         tree: &Self,
         self_lca_map: &LcaMap<Self>,
         tree_lca_map: &LcaMap<Self>,
-        pascal_triangle: &Vec<Vec<u32>>,
+        pascal_triangle: &Vec<u32>,
         norm: u32,
         t: &TreeNodeID<Self>,
         t_hat: &TreeNodeID<Self>,
@@ -882,7 +880,7 @@ where
         tree: &Self,
         self_lca_map: &LcaMap<Self>,
         tree_lca_map: &LcaMap<Self>,
-        pascal_triangle: &Vec<Vec<u32>>,
+        pascal_triangle: &Vec<u32>,
         norm: u32,
         t: &TreeNodeID<Self>,
         t_hat: &TreeNodeID<Self>,
@@ -1135,7 +1133,7 @@ where
         t1_lower_taxa: &HashSet<TreeNodeMeta<Self>>,
         t1_lower_postord_node_ids: &[TreeNodeID<Self>],
         t1_upper_postord_node_ids: &[TreeNodeID<Self>],
-        pascal_triangle: &Vec<Vec<u32>>,
+        pascal_triangle: &Vec<u32>,
         norm: u32,
         taxa_set: &HashSet<TreeNodeMeta<Self>>,
         upper_mixed: bool,
@@ -1192,7 +1190,7 @@ where
                         let v_parent_id = t1.get_node_parent_id(*v_id).unwrap();
                         let v_counterpart_count = <TreeNodeZeta<Self> as NumCast>::from(t1_node_attributes[v_sibling_id].get_counterpart_count()).unwrap();
                         let summation_term = (0..norm+1).map(|l| {
-                            let term1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[norm as usize][l as usize]).unwrap();
+                            let term1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[l as usize]).unwrap();
                             let term2 = <TreeNodeZeta<Self> as NumCast>::from((-1_i32).pow(norm-l)).unwrap();
                             let term3 = (t1.get_zeta(v_parent_id).unwrap()).powi((norm-l) as i32);
                             let term4 = t1_node_attributes[*v_id].get_sigma()[l as usize];
@@ -1258,7 +1256,7 @@ where
                         let v_parent_zeta = t1.get_zeta(v_parent_id).unwrap();
                         let v_counterpart_count = <TreeNodeZeta<Self> as NumCast>::from(t1_node_attributes.get_counterpart_count(v_sibling_id)).unwrap();
                         let summation_term = (0..norm+1).map(|l| {
-                            let term1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[norm as usize][l as usize]).unwrap();
+                            let term1 = <TreeNodeZeta<Self> as NumCast>::from(pascal_triangle[l as usize]).unwrap();
                             let term2 = <TreeNodeZeta<Self> as NumCast>::from((-1_i32).pow(norm-l)).unwrap();
 
                             let term3_1 = v_parent_zeta.powi(l as i32)*t1_node_attributes.get_sigma_pos(*v_id)[(norm-l) as usize];
