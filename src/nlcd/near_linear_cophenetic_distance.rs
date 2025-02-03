@@ -496,7 +496,7 @@ where
             taxa_map_rev,
             &pt,
             norm,
-            &taxa_set,
+            // &taxa_set,
             &mut distances,
             &mut self_node_attributes,
             &mut tree_node_attributes,
@@ -604,7 +604,7 @@ where
         taxa_map_rev: HashMap<usize,TreeNodeMeta<Self>>,
         pascal_triangle: &Vec<u32>,
         norm: u32,
-        taxa_set: &HashSet<TreeNodeMeta<Self>>,
+        // taxa_set: &HashSet<TreeNodeMeta<Self>>,
         distances: &mut TreeNodeZeta<Self>,
         self_node_attributes: &mut impl NlcdTreeAttributes<
             TreeNodeID<Self>,
@@ -666,7 +666,17 @@ where
 
         *distances = *distances + double_mix_distance+single_mix_distance;
 
-        if taxa_set.len() > 2 {
+        drop(a);
+        drop(b);
+        drop(a_hat);
+        drop(b_hat);
+        drop(self_lower_postord_node_ids);
+        drop(self_upper_postord_node_ids);
+        drop(tree_lower_postord_node_ids);
+        drop(tree_upper_postord_node_ids);
+        drop(taxa_map_rev);
+        
+        // if dbg!(taxa_set.len()) > 2 {
             for taxa_subset in [&a_int_a_hat, &a_int_b_hat, &b_int_a_hat, &b_int_b_hat]{
                 if taxa_subset.len() > 1 {
                     let (taxa_map, taxa_map_rev) = Self::create_taxa_maps(taxa_subset);
@@ -689,7 +699,7 @@ where
                         taxa_map_rev,
                         pascal_triangle,
                         norm,
-                        &taxa_set,
+                        // &taxa_set,
                         distances,
                         self_node_attributes,
                         tree_node_attributes,
@@ -702,7 +712,7 @@ where
                     *distances = *distances + (zeta_1 - zeta_2).abs().powi(norm as i32);
                 }
             }
-        }
+        // }
     }
 
     /// Returns ordered iterator used in double mix type cases

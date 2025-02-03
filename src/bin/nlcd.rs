@@ -324,7 +324,13 @@ fn main() {
 
             let mut output_file =
                 File::create(sub_m.get_one::<String>("out_file").expect("required")).unwrap();
-            
+
+            let mut fname = sub_m.get_one::<String>("out_file").cloned().expect("required");
+            fname.push('1');
+
+            let mut output_file2 =
+                File::create(fname).unwrap();
+
             // let mut lines: Vec<String> = vec![];
 
 
@@ -363,7 +369,7 @@ fn main() {
             //             .unwrap();
             //     }
             // }   
-            for taxa_size in (200..4001).step_by(200){
+            for taxa_size in (1000..20001).step_by(1000){
             
                 println!("Generating trees for n={}", taxa_size);
                 // Generating trees
@@ -380,7 +386,22 @@ fn main() {
                     })
                     .collect_vec();
 
-                for p in [1,2,3,4,5,6,7,8]{
+                // let out = vec![1,2,5,10,20,50,100].par_iter().map(|p| {
+                //         let naive = format!("naive-{}-{}:{}", taxa_size, p, runtimes_naive(&trees, *p).iter().map(|x| x.to_string()).join(","));
+                //         let nlcd = format!("nlcd-{}-{}:{}\n", taxa_size, p, runtimes_nlcd(&trees, *p).iter().map(|x| x.to_string()).join(","));
+                //         vec![naive, nlcd].into_iter().join("\n")
+                //     })
+                //     .collect::<Vec<_>>();
+
+                // output_file2
+                //     .write_all(
+                //     out.into_iter()
+                //             .join("\n")
+                //             .as_bytes(),
+                //     )
+                //     .unwrap();
+
+                for p in [1,2,5,10,20,50,100]{
                     println!("computing distances for p={}", p);
 
                     let naive = format!("naive-{}-{}:{}", taxa_size, p, runtimes_naive(&trees, p).iter().map(|x| x.to_string()).join(","));
@@ -389,7 +410,7 @@ fn main() {
                     // lines.push(naive);
                     // lines.push(nlcd);
 
-                    output_file
+                    output_file2
                         .write_all(
                         [naive,nlcd]
                                 .join("\n")
