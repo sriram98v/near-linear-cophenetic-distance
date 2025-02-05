@@ -38,7 +38,7 @@ Usage: nlcd dist --norm <NORM> --input_file <FILE_PATH> --method <METHOD> --weig
 Options:
   -p, --norm <NORM>             nth norm
   -i, --input_file <FILE_PATH>  Input tree file in Newick format
-  -m, --method <METHOD>         One of size, depth, or height [default: depth]
+  -m, --method <METHOD>         One of size, depth, height, or local [default: depth]
   -w, --weighted <WEIGHTED>     Use edge weights [default: false] [possible values: true, false]
   -h, --help                    Print help
 ```
@@ -53,3 +53,10 @@ Similarly, the following command computes the distance between the pair of examp
 ```bash
 nlcd dist -i ./EXAMPLES/trees.nwk -p 1 -m depth -w true
 ```
+
+In the case that the contributing function is externally computed, you can set the weight of the edge between a vertex and it's parent to be the value of the contributing function for that vertex and then run the folloing command.
+```bash
+nlcd dist -i ./EXAMPLES/trees.nwk -p 1 -m local -w true
+```
+
+Note that when mode is set to ```local``` the weighted flag is treated ```true``` regardless of user input. 
