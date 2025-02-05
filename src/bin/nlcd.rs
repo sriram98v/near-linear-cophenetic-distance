@@ -326,44 +326,31 @@ fn main() {
                 File::create(sub_m.get_one::<String>("out_file").expect("required")).unwrap();
 
 
-            // let mut lines: Vec<String> = vec![];
+            let trees: Vec<(DemoTree, DemoTree)> = (0..*num_iter)
+                .map(|_| {
+                    // dbg!(&x);
+                    let mut t1 = DemoTree::yule(*num_taxa);
+                    let mut t2 = DemoTree::yule(*num_taxa);
+                    t1.precompute_constant_time_lca();
+                    t2.precompute_constant_time_lca();
+                    t1.set_zeta(depth);
+                    t2.set_zeta(depth);
+                    (t1, t2)
+                })
+                .collect_vec();
 
 
-            // for taxa_size in (25..601).step_by(25){
-            
-                // println!("Generating trees for n={}", taxa_size);
-                // Generating trees
-                let trees: Vec<(DemoTree, DemoTree)> = (0..*num_iter)
-                    .map(|_| {
-                        // dbg!(&x);
-                        let mut t1 = DemoTree::yule(*num_taxa);
-                        let mut t2 = DemoTree::yule(*num_taxa);
-                        t1.precompute_constant_time_lca();
-                        t2.precompute_constant_time_lca();
-                        t1.set_zeta(depth);
-                        t2.set_zeta(depth);
-                        (t1, t2)
-                    })
-                    .collect_vec();
+                let naive = format!("naive-{}-{}:{}", *num_taxa, *norm, runtimes_naive(&trees, *norm).iter().map(|x| x.to_string()).join(","));
+                let nlcd = format!("nlcd-{}-{}:{}\n", *num_taxa, *norm, runtimes_nlcd(&trees, *norm).iter().map(|x| x.to_string()).join(","));
 
-                // for p in [1,2,5,10,20,50,100]{
-                //     println!("computing distances for p={}", p);
 
-                    let naive = format!("naive-{}-{}:{}", *num_taxa, *norm, runtimes_naive(&trees, *norm).iter().map(|x| x.to_string()).join(","));
-                    let nlcd = format!("nlcd-{}-{}:{}\n", *num_taxa, *norm, runtimes_nlcd(&trees, *norm).iter().map(|x| x.to_string()).join(","));
-
-                    // lines.push(naive);
-                    // lines.push(nlcd);
-
-                    output_file
-                        .write_all(
-                        [naive,nlcd]
-                                .join("\n")
-                                .as_bytes(),
-                        )
-                        .unwrap();
-                // }
-            // }   
+                output_file
+                    .write_all(
+                    [naive,nlcd]
+                            .join("\n")
+                            .as_bytes(),
+                    )
+                    .unwrap();
 
         }
 
