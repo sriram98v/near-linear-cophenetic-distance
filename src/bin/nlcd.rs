@@ -74,12 +74,12 @@ fn main() {
                         .value_parser(clap::value_parser!(u32))
                 )
                 .arg(
-                    arg!(-i --input_file <FILE_PATH> "Input tree file in Newick format")
+                    arg!(-i --input_file <INPUT_FILE> "Input tree file in Newick format")
                         .required(true)
                         .value_parser(clap::value_parser!(String)),
                 )
                 .arg(
-                    arg!(-m --method <METHOD> "One of size, depth, or height")
+                    arg!(-m --method <METHOD> "One of size, depth, local, or height")
                         .required(true)
                         .default_value("depth")
                         .value_parser(clap::value_parser!(String)),
@@ -392,11 +392,10 @@ fn main() {
                 }
             }
 
-
             let norm = sub_m.get_one::<u32>("norm").expect("required");
-            let input_file = matches.get_one::<String>("input_file").expect("tree-file argument required");
-            let method = matches.get_one::<String>("method").expect("method required").as_str();
-            let weighted = matches.get_one::<bool>("weighted").expect("weighted required");
+            let input_file = sub_m.get_one::<String>("input_file").expect("tree-file argument required");
+            let method = sub_m.get_one::<String>("method").expect("method required").as_str();
+            let weighted = sub_m.get_one::<bool>("weighted").expect("weighted required");
 
             let contents = fs::read_to_string(input_file)
                 .expect("Please check the input file for formatting errors!");
