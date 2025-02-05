@@ -369,7 +369,7 @@ fn main() {
             //             .unwrap();
             //     }
             // }   
-            for taxa_size in (1000..20001).step_by(1000){
+            for taxa_size in (5000..7001).step_by(1000){
             
                 println!("Generating trees for n={}", taxa_size);
                 // Generating trees
@@ -404,7 +404,7 @@ fn main() {
                 for p in [1,2,5,10,20,50,100]{
                     println!("computing distances for p={}", p);
 
-                    let naive = format!("naive-{}-{}:{}", taxa_size, p, runtimes_naive(&trees, p).iter().map(|x| x.to_string()).join(","));
+                    // let naive = format!("naive-{}-{}:{}", taxa_size, p, runtimes_naive(&trees, p).iter().map(|x| x.to_string()).join(","));
                     let nlcd = format!("nlcd-{}-{}:{}\n", taxa_size, p, runtimes_nlcd(&trees, p).iter().map(|x| x.to_string()).join(","));
 
                     // lines.push(naive);
@@ -412,8 +412,8 @@ fn main() {
 
                     output_file2
                         .write_all(
-                        [naive,nlcd]
-                                .join("\n")
+                        nlcd
+                                // .join("\n")
                                 .as_bytes(),
                         )
                         .unwrap();
