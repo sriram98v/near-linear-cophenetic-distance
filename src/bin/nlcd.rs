@@ -67,15 +67,6 @@ fn main() {
                 ),
         )
         .subcommand(
-            Command::new("test")
-                .arg(arg!(-p --norm <NORM> "nth norm").required(true).value_parser(clap::value_parser!(u32)))
-                .arg(
-                    arg!(-x --num_taxa <NUM_TAXA> "number of starting taxa")
-                        .required(true)
-                        .value_parser(clap::value_parser!(usize)),
-                )
-        )
-        .subcommand(
             Command::new("dist")
                 .arg(
                     arg!(-p --norm <NORM> "nth norm")
@@ -353,43 +344,6 @@ fn main() {
                     .unwrap();
 
         }
-
-        Some(("test", sub_m)) => {
-            fn depth(
-                tree: &DemoTree,
-                node_id:  <<DemoTree as RootedTree>::Node as RootedTreeNode>::NodeID,
-            ) -> f32 {
-                EulerWalk::get_node_depth(tree, node_id) as f32
-            }
-
-            let norm = sub_m.get_one::<u32>("norm").expect("required");
-            let x = sub_m.get_one::<usize>("num_taxa").expect("required");
-
-            let mut t1 = DemoTree::yule(*x);
-            let mut t2 = DemoTree::yule(*x);
-            t1.precompute_constant_time_lca();
-            t2.precompute_constant_time_lca();
-            t1.set_zeta(depth).unwrap();
-            t2.set_zeta(depth).unwrap();
-
-            let mut total_runtime = Duration::from_secs(0);
-            for _ in 0..20 {
-                let now = Instant::now();
-                let _ = t1.cophen_dist(&t2, *norm);
-                total_runtime += now.elapsed();
-            }
-
-            println!("Naive: {:?}", (total_runtime / 20).as_secs());
-
-            let mut total_runtime = Duration::from_secs(0);
-            for _ in 0..20 {
-                let now = Instant::now();
-                // let _ = t1.nl_cophen_dist(&t2, *norm);
-                total_runtime += now.elapsed();
-            }
-
-            println!("Nlcd: {:?}", (total_runtime / 20).as_secs());
-        }
         Some(("dist", sub_m)) => {
             // Returns node depth
             fn depth(
@@ -407,6 +361,14 @@ fn main() {
                 tree.get_cluster_size(node_id) as f32
             }
 
+            // Returns node zeta
+            fn local(
+                tree: &PhyloTree,
+                node_id:  <<PhyloTree as RootedTree>::Node as RootedTreeNode>::NodeID,
+            ) -> f32 {
+                tree.get_node(node_id).unwrap().get_weight().unwrap() as f32
+            }
+            
             // Sets zeta to be node heights
             fn set_node_heights(tree: &mut PhyloTree) {
                 let node_post_ord = tree
@@ -437,7 +399,7 @@ fn main() {
             let weighted = matches.get_one::<bool>("weighted").expect("weighted required");
 
             let contents = fs::read_to_string(input_file)
-                .expect("Should have been able to read the file");
+                .expect("Please check the input file for formatting errors!");
 
             let tree_strings = contents.split("\n").collect_vec();
 
@@ -455,6 +417,10 @@ fn main() {
                 "height" => {
                     set_node_heights(&mut t1);
                     set_node_heights(&mut t2);        
+                }
+                "local" => {
+                    t1.set_zeta(local);
+                    t2.set_zeta(local);        
                 }
                 _ => {
                     t1.set_zeta(depth);
