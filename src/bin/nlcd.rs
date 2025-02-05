@@ -315,8 +315,8 @@ fn main() {
             }
 
 
-            // let norm = sub_m.get_one::<u32>("norm").expect("required");
-            // let num_taxa = sub_m.get_one::<usize>("num_taxa").expect("required");
+            let norm = sub_m.get_one::<u32>("norm").expect("required");
+            let num_taxa = sub_m.get_one::<usize>("num_taxa").expect("required");
             let num_iter = sub_m.get_one::<u32>("num_iter").expect("required");
             let num_threads = sub_m.get_one::<usize>("num_threads").unwrap();
             rayon::ThreadPoolBuilder::new().num_threads(*num_threads).build_global().unwrap();
@@ -325,59 +325,19 @@ fn main() {
             let mut output_file =
                 File::create(sub_m.get_one::<String>("out_file").expect("required")).unwrap();
 
-            let mut fname = sub_m.get_one::<String>("out_file").cloned().expect("required");
-            fname.push('1');
-
-            let mut output_file2 =
-                File::create(fname).unwrap();
 
             // let mut lines: Vec<String> = vec![];
 
 
             // for taxa_size in (25..601).step_by(25){
             
-            //     println!("Generating trees for n={}", taxa_size);
-            //     // Generating trees
-            //     let trees: Vec<(DemoTree, DemoTree)> = (0..*num_iter)
-            //         .map(|_| {
-            //             // dbg!(&x);
-            //             let mut t1 = DemoTree::yule(taxa_size);
-            //             let mut t2 = DemoTree::yule(taxa_size);
-            //             t1.precompute_constant_time_lca();
-            //             t2.precompute_constant_time_lca();
-            //             t1.set_zeta(depth);
-            //             t2.set_zeta(depth);
-            //             (t1, t2)
-            //         })
-            //         .collect_vec();
-
-            //     for p in [1,2,5,10,20,50,100]{
-            //         println!("computing distances for p={}", p);
-
-            //         let naive = format!("naive-{}-{}:{}", taxa_size, p, runtimes_naive(&trees, p).iter().map(|x| x.to_string()).join(","));
-            //         let nlcd = format!("nlcd-{}-{}:{}\n", taxa_size, p, runtimes_nlcd(&trees, p).iter().map(|x| x.to_string()).join(","));
-
-            //         // lines.push(naive);
-            //         // lines.push(nlcd);
-
-            //         output_file
-            //             .write_all(
-            //             [naive,nlcd]
-            //                     .join("\n")
-            //                     .as_bytes(),
-            //             )
-            //             .unwrap();
-            //     }
-            // }   
-            for taxa_size in (5000..7001).step_by(1000){
-            
-                println!("Generating trees for n={}", taxa_size);
+                // println!("Generating trees for n={}", taxa_size);
                 // Generating trees
                 let trees: Vec<(DemoTree, DemoTree)> = (0..*num_iter)
                     .map(|_| {
                         // dbg!(&x);
-                        let mut t1 = DemoTree::yule(taxa_size);
-                        let mut t2 = DemoTree::yule(taxa_size);
+                        let mut t1 = DemoTree::yule(*num_taxa);
+                        let mut t2 = DemoTree::yule(*num_taxa);
                         t1.precompute_constant_time_lca();
                         t2.precompute_constant_time_lca();
                         t1.set_zeta(depth);
@@ -386,39 +346,24 @@ fn main() {
                     })
                     .collect_vec();
 
-                // let out = vec![1,2,5,10,20,50,100].par_iter().map(|p| {
-                //         let naive = format!("naive-{}-{}:{}", taxa_size, p, runtimes_naive(&trees, *p).iter().map(|x| x.to_string()).join(","));
-                //         let nlcd = format!("nlcd-{}-{}:{}\n", taxa_size, p, runtimes_nlcd(&trees, *p).iter().map(|x| x.to_string()).join(","));
-                //         vec![naive, nlcd].into_iter().join("\n")
-                //     })
-                //     .collect::<Vec<_>>();
+                // for p in [1,2,5,10,20,50,100]{
+                //     println!("computing distances for p={}", p);
 
-                // output_file2
-                //     .write_all(
-                //     out.into_iter()
-                //             .join("\n")
-                //             .as_bytes(),
-                //     )
-                //     .unwrap();
-
-                for p in [1,2,5,10,20,50,100]{
-                    println!("computing distances for p={}", p);
-
-                    // let naive = format!("naive-{}-{}:{}", taxa_size, p, runtimes_naive(&trees, p).iter().map(|x| x.to_string()).join(","));
-                    let nlcd = format!("nlcd-{}-{}:{}\n", taxa_size, p, runtimes_nlcd(&trees, p).iter().map(|x| x.to_string()).join(","));
+                    let naive = format!("naive-{}-{}:{}", *num_taxa, *norm, runtimes_naive(&trees, *norm).iter().map(|x| x.to_string()).join(","));
+                    let nlcd = format!("nlcd-{}-{}:{}\n", *num_taxa, *norm, runtimes_nlcd(&trees, *norm).iter().map(|x| x.to_string()).join(","));
 
                     // lines.push(naive);
                     // lines.push(nlcd);
 
-                    output_file2
+                    output_file
                         .write_all(
-                        nlcd
-                                // .join("\n")
+                        [naive,nlcd]
+                                .join("\n")
                                 .as_bytes(),
                         )
                         .unwrap();
-                }
-            }            
+                // }
+            // }   
 
         }
 
