@@ -59,4 +59,4 @@ In the case that the contributing function is externally computed, you can set t
 nlcd dist -i ./EXAMPLES/trees.nwk -p 1 -m local -w true
 ```
 
-Note that when mode is set to ```local``` the weighted flag is treated ```true``` regardless of user input. 
+Note that when mode is set to ```local``` the weighted flag is treated ```true``` regardless of user input, and the weight of the edge leading to the root vertex is always zero. 
